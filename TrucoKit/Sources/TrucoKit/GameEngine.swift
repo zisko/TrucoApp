@@ -1,4 +1,3 @@
-
 import Foundation
 
 public class TrucoEngine {
@@ -25,19 +24,21 @@ public class TrucoEngine {
                     gameState.players[playerIndex] = currentPlayer
                 }
                 
-                // Switch turns
-                gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
-
                 // Check if hand is over
                 if gameState.currentHandPlayedCards.count == 2 {
                     let handWinnerId = determineHandWinner()
                     gameState.handWinners.append(handWinnerId)
                     
-                    // Clear played cards for the next hand
-                    gameState.currentHandPlayedCards = []
-
                     // Check if round is over
                     checkRoundEnd()
+
+                    // If round is not over, start a new hand
+                    if gameState.gamePhase == .playing {
+                        startNewHand()
+                    }
+                } else {
+                    // Only one card played, switch turns
+                    gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
                 }
             }
         default:
@@ -85,24 +86,26 @@ public class TrucoEngine {
             print("Hand winner: Player \(card2Info.player)")
             return card2Info.player
         } else {
-            // Tie: The player who is "mano" (started the round) wins the hand if they played the tying card first.
-            // If both cards have the same trucoValue, the player who played first wins the hand.
-            // This is a simplification for now, as Truco tie-breaking is more complex (e.g., highest card played first wins, or next hand decides)
-            print("Hand tie, first player to play wins: Player \(card1Info.player)")
-            return card1Info.player
+            // It's a tie for this hand. Return nil to indicate a tie.
+            print("Hand tie.")
+            return nil
         }
     }
 
     private func checkRoundEnd() {
-        let player1Wins = gameState.handWinners.filter { $0 == gameState.players[0].id }.count
-        let player2Wins = gameState.handWinners.filter { $0 == gameState.players[1].id }.count
+        let player1Id = gameState.players[0].id
+        let player2Id = gameState.players[1].id
 
-        if player1Wins >= 2 {
-            gameState.roundWinner = gameState.players[0].id
+        let player1HandWins = gameState.handWinners.filter { $0 == player1Id }.count
+        let player2HandWins = gameState.handWinners.filter { $0 == player2Id }.count
+        let tiedHands = gameState.handWinners.filter { $0 == nil }.count
+
+        if player1HandWins >= 2 {
+            gameState.roundWinner = player1Id
             gameState.gamePhase = .roundOver
             print("Round over. Player 1 wins the round!")
-        } else if player2Wins >= 2 {
-            gameState.roundWinner = gameState.players[1].id
+        } else if player2HandWins >= 2 {
+            gameState.roundWinner = player2Id
             gameState.gamePhase = .roundOver
             print("Round over. Player 2 wins the round!")
         } else if gameState.handWinners.count == 3 {
@@ -111,7 +114,26 @@ public class TrucoEngine {
             gameState.roundWinner = gameState.manoPlayerId
             gameState.gamePhase = .roundOver
             print("Round over. All hands tied, mano player \(gameState.manoPlayerId!) wins the round!")
+        } else if gameState.handWinners.count == 2 && tiedHands == 1 {
+            // One hand tied, one won by each player. The winner of the first hand wins the round.
+            if let firstHandWinner = gameState.handWinners[0] {
+                gameState.roundWinner = firstHandWinner
+                gameState.gamePhase = .roundOver
+                print("Round over. First hand winner \(firstHandWinner) wins the round due to tie.")
+            }
         }
+    }
+
+    private func startNewHand() {
+        gameState.currentHandPlayedCards = []
+        // The player who won the last hand starts the next hand. If it was a tie, the mano player starts.
+        if let lastHandWinner = gameState.handWinners.last, let winnerId = lastHandWinner {
+            gameState.currentPlayerIndex = gameState.players.firstIndex(where: { $0.id == winnerId }) ?? 0
+        } else {
+            // If the last hand was a tie, the mano player starts the next hand.
+            gameState.currentPlayerIndex = gameState.players.firstIndex(where: { $0.id == gameState.manoPlayerId }) ?? 0
+        }
+        print("Starting new hand. Current player: \(gameState.players[gameState.currentPlayerIndex].name)")
     }
 
     public func startNewRound() {
