@@ -1,61 +1,61 @@
-//
-//  ContentView.swift
-//  Truco
-//
-//  Created by Jacob Mizraji on 7/14/25.
-//
-
 import SwiftUI
-import SwiftData
+import TrucoKit
+import Observation
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    var body: some View {
+        GameView()
+    }
+}
+
+struct GameView: View {
+    @State private var viewModel = GameViewModel()
 
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
-                }
-                .onDelete(perform: deleteItems)
+        VStack {
+            Text("Truco Game")
+                .font(.largeTitle)
+                .padding()
+
+            Spacer()
+
+            Text("Current Game Phase: \(viewModel.gameState.gamePhase.rawValue)")
+                .font(.headline)
+
+            Spacer()
+
+            Button("Start New Game") {
+                // This will eventually trigger game setup and dealing cards
+                print("Start New Game button tapped")
             }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-        } detail: {
-            Text("Select an item")
+            .padding()
+            .background(Color.blue)
+            .foregroundColor(.white)
+            .cornerRadius(10)
         }
     }
+}
 
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
+@Observable
+class GameViewModel {
+    var gameState: GameState
+    private var gameEngine: TrucoEngine
+    private var multiplayerService: MultiplayerService
 
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
-            }
+    init() {
+        self.gameState = GameState() // Initialize gameState first
+        self.gameEngine = TrucoEngine(initialState: self.gameState)
+        // For now, we'll use a dummy service until GameKit is fully integrated
+        self.multiplayerService = GameKitService() // Placeholder
+        
+        // Update game state when a move is received
+        multiplayerService.moveReceived = { [weak self] move in
+            self?.gameEngine.handle(move: move)
+            self?.gameState = self?.gameEngine.gameState ?? GameState()
         }
     }
 }
 
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
 }
