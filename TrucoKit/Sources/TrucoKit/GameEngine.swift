@@ -1,3 +1,4 @@
+
 import Foundation
 
 public class TrucoEngine {
@@ -29,6 +30,9 @@ public class TrucoEngine {
                     let handWinnerId = determineHandWinner()
                     gameState.handWinners.append(handWinnerId)
                     
+                    // Clear played cards for the next hand
+                    gameState.currentHandPlayedCards = []
+
                     // Check if round is over
                     checkRoundEnd()
 
@@ -86,7 +90,7 @@ public class TrucoEngine {
             print("Hand winner: Player \(card2Info.player)")
             return card2Info.player
         } else {
-            // It's a tie for this hand. Return nil to indicate a tie.
+            // It's a tie for this hand. Return nil to indicate a tie that checkRoundEnd will resolve.
             print("Hand tie.")
             return nil
         }
@@ -100,6 +104,7 @@ public class TrucoEngine {
         let player2HandWins = gameState.handWinners.filter { $0 == player2Id }.count
         let tiedHands = gameState.handWinners.filter { $0 == nil }.count
 
+        // Rule 1: A player wins two hands outright
         if player1HandWins >= 2 {
             gameState.roundWinner = player1Id
             gameState.gamePhase = .roundOver
@@ -108,18 +113,30 @@ public class TrucoEngine {
             gameState.roundWinner = player2Id
             gameState.gamePhase = .roundOver
             print("Round over. Player 2 wins the round!")
-        } else if gameState.handWinners.count == 3 {
-            // All three hands played, and no one has won two hands outright (e.g., 1-1-1 tie)
-            // In Truco, if all three hands are tied, the "mano" (player who started the round) wins the round.
-            gameState.roundWinner = gameState.manoPlayerId
-            gameState.gamePhase = .roundOver
-            print("Round over. All hands tied, mano player \(gameState.manoPlayerId!) wins the round!")
-        } else if gameState.handWinners.count == 2 && tiedHands == 1 {
-            // One hand tied, one won by each player. The winner of the first hand wins the round.
-            if let firstHandWinner = gameState.handWinners[0] {
-                gameState.roundWinner = firstHandWinner
+        }
+        // Rule 2: All three hands played
+        else if gameState.handWinners.count == 3 {
+            // Scenario A: All three hands are tied (e.g., [nil, nil, nil])
+            if tiedHands == 3 {
+                gameState.roundWinner = gameState.manoPlayerId
                 gameState.gamePhase = .roundOver
-                print("Round over. First hand winner \(firstHandWinner) wins the round due to tie.")
+                print("Round over. All hands tied, mano player \(gameState.manoPlayerId!) wins the round!")
+            }
+            // Scenario B: One hand tied, one won by each player (e.g., [winner1, nil, winner2] or [nil, winner1, winner2])
+            // The rule states: "If a player or team wins the first hand, loses the second, and ties the third, the player or team that won the first hand wins the round."
+            // This implies that if there's a tie in any hand, the winner of the first non-tied hand wins the round.
+            else {
+                // Find the winner of the first non-tied hand
+                if let firstNonTiedHandWinner = gameState.handWinners.first(where: { $0 != nil }) {
+                    gameState.roundWinner = firstNonTiedHandWinner
+                    gameState.gamePhase = .roundOver
+                    print("Round over. First non-tied hand winner \(firstNonTiedHandWinner!) wins the round due to tie-breaking rules.")
+                } else {
+                    // This case should ideally not be reached if all rules are covered.
+                    // It means there are hands played, but all are ties, and not all 3 hands are tied.
+                    // This might indicate an edge case or a misunderstanding of the rules.
+                    print("Unexpected round end scenario with ties.")
+                }
             }
         }
     }
