@@ -1,3 +1,4 @@
+
 import Foundation
 
 public class TrucoEngine {
@@ -45,48 +46,59 @@ public class TrucoEngine {
                 }
             }
         case .callTruco:
-            guard gameState.trucoState == .none else { return }
-            gameState.trucoState = .trucoCalled
+            guard gameState.trucoState != .rejected else { return } // Cannot call truco if already rejected
+            
+            let currentTrucoPoints: Int
+            switch gameState.trucoState {
+            case .none:
+                gameState.trucoState = .trucoCalled
+                currentTrucoPoints = 2
+            case .trucoCalled:
+                gameState.trucoState = .retrucoCalled
+                currentTrucoPoints = 3
+            case .retrucoCalled:
+                gameState.trucoState = .valeCuatroCalled
+                currentTrucoPoints = 4
+            case .valeCuatroCalled:
+                return // Cannot call truco beyond vale cuatro
+            case .accepted, .rejected:
+                return // Should not happen if guard is correct
+            }
             gameState.trucoCallerId = gameState.players[gameState.currentPlayerIndex].id
-            gameState.envidoPoints = 2 // Initial Truco value
-            print("Truco called by \(gameState.players[gameState.currentPlayerIndex].name)")
+            gameState.envidoPoints = currentTrucoPoints // Truco points are stored in envidoPoints for now
+            print("Truco called by \(gameState.players[gameState.currentPlayerIndex].name). Current Truco points: \(currentTrucoPoints)")
 
         case .acceptTruco:
-            // Logic to accept truco, points awarded at end of round
             gameState.trucoState = .accepted
             print("Truco accepted!")
 
         case .rejectTruco:
-            // Rejecting truco means the caller wins the round immediately
             if let callerId = gameState.trucoCallerId {
-                gameState.roundWinner = callerId
-                gameState.gamePhase = .roundOver
-                // Award points for rejected truco
                 if let callerIndex = gameState.players.firstIndex(where: { $0.id == callerId }) {
-                    gameState.players[callerIndex].score += 1 // 1 point for rejected truco
+                    gameState.players[callerIndex].score += (gameState.envidoPoints - 1) // Award points for rejected truco
+                    print("Truco rejected! \(gameState.players[callerIndex].name) gets \(gameState.envidoPoints - 1) points.")
                 }
-                print("Truco rejected! \(gameState.players.first(where: { $0.id == callerId })?.name ?? "Caller") wins the round.")
             }
-
+            gameState.gamePhase = .roundOver // Round ends immediately
+            gameState.trucoState = .rejected
+            
         case .callEnvido:
-            guard gameState.envidoState == .none else { return }
+            guard gameState.envidoState == .none else { return } // Envido can only be called once per round
             gameState.envidoState = .envidoCalled
             gameState.envidoCallerId = gameState.players[gameState.currentPlayerIndex].id
             gameState.envidoPoints = 2 // Initial Envido value
-            print("Envido called by \(gameState.players[gameState.currentPlayerIndex].name)")
+            print("Envido called by \(gameState.players[gameState.currentPlayerIndex].name). Current Envido points: \(gameState.envidoPoints)")
 
         case .acceptEnvido:
-            // Logic to resolve envido immediately
             resolveEnvido()
             gameState.envidoState = .accepted
             print("Envido accepted!")
 
         case .rejectEnvido:
-            // Rejecting envido means the caller gets 1 point
             if let callerId = gameState.envidoCallerId {
                 if let callerIndex = gameState.players.firstIndex(where: { $0.id == callerId }) {
-                    gameState.players[callerIndex].score += 1
-                    print("Envido rejected! \(gameState.players.first(where: { $0.id == callerId })?.name ?? "Caller") gets 1 point.")
+                    gameState.players[callerIndex].score += 1 // 1 point for rejected envido
+                    print("Envido rejected! \(gameState.players[callerIndex].name) gets 1 point.")
                 }
             }
             gameState.envidoState = .rejected
