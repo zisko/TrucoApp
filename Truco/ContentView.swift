@@ -1,4 +1,3 @@
-
 import SwiftUI
 import TrucoKit
 import Observation
@@ -73,13 +72,25 @@ struct GameView: View {
             }
             .padding()
 
-            Button("Start New Game") {
-                viewModel.dealInitialCards()
+            HStack {
+                Button("Start New Game") {
+                    viewModel.dealInitialCards()
+                }
+                .padding()
+                .background(Color.blue)
+                .foregroundColor(.white)
+                .cornerRadius(10)
+
+                if viewModel.gameState.gamePhase == .roundOver {
+                    Button("Start New Round") {
+                        viewModel.startNewRound()
+                    }
+                    .padding()
+                    .background(Color.green)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                }
             }
-            .padding()
-            .background(Color.blue)
-            .foregroundColor(.white)
-            .cornerRadius(10)
         }
     }
 }
@@ -186,6 +197,11 @@ class GameViewModel {
             gameEngine.handle(move: .playCard(card))
             gameState = gameEngine.gameState
         }
+    }
+
+    func startNewRound() {
+        gameEngine.startNewRound()
+        gameState = gameEngine.gameState
     }
 }
 
