@@ -1,3 +1,4 @@
+
 import SwiftUI
 import TrucoKit
 import Observation
@@ -19,14 +20,29 @@ struct GameView: View {
 
             Spacer()
 
-            Text("Current Game Phase: \(viewModel.gameState.gamePhase.rawValue)")
+            // Opponent's Hand (placeholder)
+            Text("Opponent's Hand")
                 .font(.headline)
+            HandView(cards: viewModel.gameState.players.first(where: { $0.id != viewModel.localPlayerId })?.hand ?? [])
+                .padding()
 
             Spacer()
 
+            // Game Board (placeholder)
+            Text("Game Board")
+                .font(.headline)
+            // Display played cards here later
+
+            Spacer()
+
+            // Local Player's Hand
+            Text("Your Hand")
+                .font(.headline)
+            HandView(cards: viewModel.gameState.players.first(where: { $0.id == viewModel.localPlayerId })?.hand ?? [])
+                .padding()
+
             Button("Start New Game") {
-                // This will eventually trigger game setup and dealing cards
-                print("Start New Game button tapped")
+                viewModel.dealInitialCards()
             }
             .padding()
             .background(Color.blue)
@@ -36,9 +52,43 @@ struct GameView: View {
     }
 }
 
+struct CardView: View {
+    let card: Card
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.white)
+                .frame(width: 60, height: 90)
+                .shadow(radius: 3)
+
+            VStack {
+                Text(card.rank.description)
+                    .font(.caption)
+                    .fontWeight(.bold)
+                Text(card.suit.rawValue.prefix(1).uppercased())
+                    .font(.caption2)
+            }
+        }
+    }
+}
+
+struct HandView: View {
+    let cards: [Card]
+
+    var body: some View {
+        HStack {
+            ForEach(cards) { card in
+                CardView(card: card)
+            }
+        }
+    }
+}
+
 @Observable
 class GameViewModel {
     var gameState: GameState
+    var localPlayerId: UUID // To identify the local player
     private var gameEngine: TrucoEngine
     private var multiplayerService: MultiplayerService
 
@@ -46,14 +96,20 @@ class GameViewModel {
         let initialGameState = GameState()
         self.gameState = initialGameState
         self.gameEngine = TrucoEngine(initialState: initialGameState)
-        // For now, we'll use a dummy service until GameKit is fully integrated
         self.multiplayerService = GameKitService() // Placeholder
-        
-        // Update game state when a move is received
+        self.localPlayerId = UUID() // Assign a dummy ID for now
+
         multiplayerService.moveReceived = { [weak self] move in
             self?.gameEngine.handle(move: move)
             self?.gameState = self?.gameEngine.gameState ?? GameState()
         }
+    }
+
+    func dealInitialCards() {
+        // For now, we'll simulate dealing cards directly in the engine
+        // In a real multiplayer game, this would come from the host/server
+        gameEngine.dealInitialCards(player1Id: localPlayerId, player2Id: UUID())
+        gameState = gameEngine.gameState
     }
 }
 
