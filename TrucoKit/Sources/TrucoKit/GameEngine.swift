@@ -2,7 +2,7 @@
 import Foundation
 
 public class TrucoEngine {
-    private(set) var gameState: GameState
+    public private(set) var gameState: GameState
     
     public init(initialState: GameState = GameState()) {
         self.gameState = initialState

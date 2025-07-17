@@ -1,0 +1,3 @@
+fix(ui): Correct GameViewModel initialization with @Observable
+
+This commit refactors the `GameViewModel`'s `init` method in `ContentView.swift` to correctly handle property initialization when using the `@Observable` macro. It ensures `gameState` is fully initialized before being passed to `TrucoEngine`, resolving the "self used in property access before all stored properties are initialized" error. This ensures the `GameViewModel` correctly sets up its dependencies.
