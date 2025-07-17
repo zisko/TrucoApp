@@ -1,4 +1,3 @@
-
 import Foundation
 
 public class TrucoEngine {
@@ -18,7 +17,7 @@ public class TrucoEngine {
             
             if let index = currentPlayer.hand.firstIndex(of: card) {
                 currentPlayer.hand.remove(at: index)
-                gameState.playedCards.append((player: currentPlayer.id, card: card))
+                gameState.playedCards.append(PlayedCardInfo(player: currentPlayer.id, card: card))
                 
                 // Update the player in the gameState
                 if let playerIndex = gameState.players.firstIndex(where: { $0.id == currentPlayer.id }) {

@@ -1,3 +1,4 @@
+
 import Foundation
 
 // MARK: - Core Data Models
@@ -81,6 +82,12 @@ public struct Player: Codable, Hashable, Identifiable {
     public var score: Int
 }
 
+public struct PlayedCardInfo: Codable, Identifiable {
+    public let id = UUID()
+    public let player: UUID
+    public let card: Card
+}
+
 // MARK: - Game State
 
 public struct GameState: Codable {
@@ -89,7 +96,7 @@ public struct GameState: Codable {
     public var currentPlayerIndex: Int
     public var gamePhase: GamePhase
     public var roundWinner: UUID?
-    public var playedCards: [(player: UUID, card: Card)]
+    public var playedCards: [PlayedCardInfo]
 
     public init() {
         self.players = []
