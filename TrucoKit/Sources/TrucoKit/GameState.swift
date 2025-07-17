@@ -1,4 +1,3 @@
-
 import Foundation
 
 // MARK: - Core Data Models
@@ -100,6 +99,15 @@ public struct GameState: Codable {
     public var handWinners: [UUID?]
     public var manoPlayerId: UUID?
 
+    // Truco State
+    public var trucoState: TrucoState
+    public var trucoCallerId: UUID?
+
+    // Envido State
+    public var envidoState: EnvidoState
+    public var envidoCallerId: UUID?
+    public var envidoPoints: Int // The points value of the current envido call
+
     public init() {
         self.players = []
         self.deck = GameState.newDeck()
@@ -109,6 +117,11 @@ public struct GameState: Codable {
         self.currentHandPlayedCards = []
         self.handWinners = []
         self.manoPlayerId = nil
+        self.trucoState = .none
+        self.trucoCallerId = nil
+        self.envidoState = .none
+        self.envidoCallerId = nil
+        self.envidoPoints = 0
     }
 
     public static func newDeck() -> [Card] {
@@ -127,4 +140,23 @@ public enum GamePhase: String, Codable {
     case playing
     case roundOver
     case gameOver
+}
+
+public enum TrucoState: String, Codable {
+    case none
+    case trucoCalled
+    case retrucoCalled
+    case valeCuatroCalled
+    case accepted
+    case rejected
+}
+
+public enum EnvidoState: String, Codable {
+    case none
+    case envidoCalled
+    case realEnvidoCalled
+    case faltaEnvidoCalled
+    case accepted
+    case rejected
+    case envidoEnvidoCalled
 }
