@@ -1,4 +1,3 @@
-
 import SwiftUI
 import TrucoKit
 import Observation
@@ -31,8 +30,15 @@ struct GameView: View {
             // Game Board
             Text("Played Cards")
                 .font(.headline)
-            HandView(cards: viewModel.gameState.playedCards, onCardTap: { _ in })
+            PlayedCardsView(playedCards: viewModel.gameState.playedCards)
                 .padding()
+
+            if let winnerName = viewModel.roundWinnerName {
+                Text("Round Winner: \(winnerName)")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.green)
+            }
 
             Spacer()
 
@@ -103,6 +109,22 @@ struct HandView: View {
     }
 }
 
+struct PlayedCardsView: View {
+    let playedCards: [(player: UUID, card: Card)]
+
+    var body: some View {
+        HStack {
+            ForEach(playedCards, id: \.card.id) { playedCard in
+                VStack {
+                    Text(playedCard.player.uuidString.prefix(4))
+                        .font(.caption2)
+                    CardView(card: playedCard.card)
+                }
+            }
+        }
+    }
+}
+
 @Observable
 class GameViewModel {
     var gameState: GameState
@@ -113,6 +135,13 @@ class GameViewModel {
     var isLocalPlayerTurn: Bool {
         guard let localPlayer = gameState.players.first(where: { $0.id == localPlayerId }) else { return false }
         return gameState.players[gameState.currentPlayerIndex].id == localPlayer.id
+    }
+
+    var roundWinnerName: String? {
+        if let winnerId = gameState.roundWinner {
+            return gameState.players.first(where: { $0.id == winnerId })?.name
+        }
+        return nil
     }
 
     init() {

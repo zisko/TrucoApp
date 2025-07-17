@@ -89,7 +89,7 @@ public struct GameState: Codable {
     public var currentPlayerIndex: Int
     public var gamePhase: GamePhase
     public var roundWinner: UUID?
-    public var playedCards: [Card]
+    public var playedCards: [(player: UUID, card: Card)]
 
     public init() {
         self.players = []
