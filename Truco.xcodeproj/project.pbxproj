@@ -10,7 +10,8 @@
 		F5EF71FE2E29543A006C4CF0 /* Messages.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5EF71FD2E29543A006C4CF0 /* Messages.framework */; };
 		F5EF720A2E29543C006C4CF0 /* TrucoMessages.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F5EF71FB2E29543A006C4CF0 /* TrucoMessages.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		F5EF72122E29555E006C4CF0 /* TrucoKit in Frameworks */ = {isa = PBXBuildFile; productRef = F5EF72112E29555E006C4CF0 /* TrucoKit */; };
-		F5EF72142E295564006C4CF0 /* TrucoKit in Frameworks */ = {isa = PBXBuildFile; productRef = F5EF72132E295564006C4CF0 /* TrucoKit */; };
+		F5EF72172E29562B006C4CF0 /* TrucoKit in Frameworks */ = {isa = PBXBuildFile; productRef = F5EF72162E29562B006C4CF0 /* TrucoKit */; };
+		F5EF72192E295640006C4CF0 /* TrucoKit in Frameworks */ = {isa = PBXBuildFile; productRef = F5EF72182E295640006C4CF0 /* TrucoKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -76,6 +77,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F5EF72122E29555E006C4CF0 /* TrucoKit in Frameworks */,
+				F5EF72172E29562B006C4CF0 /* TrucoKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -84,7 +86,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F5EF71FE2E29543A006C4CF0 /* Messages.framework in Frameworks */,
-				F5EF72142E295564006C4CF0 /* TrucoKit in Frameworks */,
+				F5EF72192E295640006C4CF0 /* TrucoKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -142,6 +144,7 @@
 			name = Truco;
 			packageProductDependencies = (
 				F5EF72112E29555E006C4CF0 /* TrucoKit */,
+				F5EF72162E29562B006C4CF0 /* TrucoKit */,
 			);
 			productName = Truco;
 			productReference = F51771E32E25A23A006CC6F9 /* Truco.app */;
@@ -164,7 +167,7 @@
 			);
 			name = TrucoMessages;
 			packageProductDependencies = (
-				F5EF72132E295564006C4CF0 /* TrucoKit */,
+				F5EF72182E295640006C4CF0 /* TrucoKit */,
 			);
 			productName = TrucoMessages;
 			productReference = F5EF71FB2E29543A006C4CF0 /* TrucoMessages.appex */;
@@ -197,6 +200,9 @@
 			);
 			mainGroup = F51771DA2E25A23A006CC6F9;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				F5EF72152E29562B006C4CF0 /* XCLocalSwiftPackageReference "TrucoKit" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = F51771E42E25A23A006CC6F9 /* Products */;
 			projectDirPath = "";
@@ -526,13 +532,25 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		F5EF72152E29562B006C4CF0 /* XCLocalSwiftPackageReference "TrucoKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = TrucoKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		F5EF72112E29555E006C4CF0 /* TrucoKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = TrucoKit;
 		};
-		F5EF72132E295564006C4CF0 /* TrucoKit */ = {
+		F5EF72162E29562B006C4CF0 /* TrucoKit */ = {
 			isa = XCSwiftPackageProductDependency;
+			productName = TrucoKit;
+		};
+		F5EF72182E295640006C4CF0 /* TrucoKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F5EF72152E29562B006C4CF0 /* XCLocalSwiftPackageReference "TrucoKit" */;
 			productName = TrucoKit;
 		};
 /* End XCSwiftPackageProductDependency section */
