@@ -213,8 +213,7 @@ class GameViewModel {
     var gameState: GameState
     var localPlayerId: UUID // To identify the local player
     private var gameEngine: TrucoEngine
-    private var multiplayerService: MultiplayerService
-
+    
     var isLocalPlayerTurn: Bool {
         guard let localPlayer = gameState.players.first(where: { $0.id == localPlayerId }) else { return false }
         return gameState.players[gameState.currentPlayerIndex].id == localPlayer.id
@@ -235,18 +234,15 @@ class GameViewModel {
         let initialGameState = GameState()
         self.gameState = initialGameState
         self.gameEngine = TrucoEngine(initialState: initialGameState)
-        self.multiplayerService = GameKitService() // Placeholder
         self.localPlayerId = UUID() // Assign a dummy ID for now
-
-        multiplayerService.moveReceived = { [weak self] move in
-            self?.gameEngine.handle(move: move)
-            self?.gameState = self?.gameEngine.gameState ?? GameState()
-        }
     }
 
     func dealInitialCards() {
         gameEngine.dealInitialCards(player1Id: localPlayerId, player2Id: UUID())
         gameState = gameEngine.gameState
+        if !isLocalPlayerTurn {
+            makeOpponentMove()
+        }
     }
 
     func playCard(_ card: Card) {
@@ -254,41 +250,83 @@ class GameViewModel {
             gameEngine.handle(move: .playCard(card))
             gameState = gameEngine.gameState
         }
+        if !isLocalPlayerTurn {
+            makeOpponentMove()
+        }
     }
 
     func callTruco() {
         gameEngine.handle(move: .callTruco)
         gameState = gameEngine.gameState
+        if !isLocalPlayerTurn {
+            makeOpponentMove()
+        }
     }
 
     func acceptTruco() {
         gameEngine.handle(move: .acceptTruco)
         gameState = gameEngine.gameState
+        if !isLocalPlayerTurn {
+            makeOpponentMove()
+        }
     }
 
     func rejectTruco() {
         gameEngine.handle(move: .rejectTruco)
-        gameState = gameEngine.gameState
+        gameState = gameState.gamePhase == .roundOver ? gameEngine.gameState : gameState // Update only if round ended
+        if !isLocalPlayerTurn {
+            makeOpponentMove()
+        }
     }
 
     func callEnvido() {
         gameEngine.handle(move: .callEnvido)
         gameState = gameEngine.gameState
+        if !isLocalPlayerTurn {
+            makeOpponentMove()
+        }
     }
 
     func acceptEnvido() {
         gameEngine.handle(move: .acceptEnvido)
         gameState = gameEngine.gameState
+        if !isLocalPlayerTurn {
+            makeOpponentMove()
+        }
     }
 
     func rejectEnvido() {
         gameEngine.handle(move: .rejectEnvido)
         gameState = gameEngine.gameState
+        if !isLocalPlayerTurn {
+            makeOpponentMove()
+        }
     }
 
     func startNewRound() {
         gameEngine.startNewRound()
         gameState = gameEngine.gameState
+        if !isLocalPlayerTurn {
+            makeOpponentMove()
+        }
+    }
+    
+    private func makeOpponentMove() {
+        // Simulate thinking time
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            guard let opponent = self.gameState.players.first(where: { $0.id != self.localPlayerId }) else { return }
+            guard let randomCard = opponent.hand.randomElement() else { return }
+            
+            self.gameEngine.handle(move: .playCard(randomCard))
+            self.gameState = self.gameEngine.gameState
+            
+            // If it's still opponent's turn after their move (e.g., due to a rule that gives them another turn),
+            // or if the game state changes such that it's still their turn, they should make another move.
+            // For now, we'll assume one move per turn.
+            if !self.isLocalPlayerTurn && self.gameState.gamePhase == .playing {
+                self.makeOpponentMove()
+            }
+        }
     }
 }
 
