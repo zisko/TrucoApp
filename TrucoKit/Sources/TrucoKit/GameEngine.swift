@@ -1,3 +1,4 @@
+
 import Foundation
 
 public class TrucoEngine {
@@ -111,5 +112,38 @@ public class TrucoEngine {
             gameState.gamePhase = .roundOver
             print("Round over. All hands tied, mano player \(gameState.manoPlayerId!) wins the round!")
         }
+    }
+
+    public func startNewRound() {
+        // Reset game state for a new round
+        gameState.currentHandPlayedCards = []
+        gameState.handWinners = []
+        gameState.roundWinner = nil
+        gameState.gamePhase = .playing
+
+        // Determine new mano player (alternates each round)
+        if let currentManoIndex = gameState.players.firstIndex(where: { $0.id == gameState.manoPlayerId }) {
+            let nextManoIndex = (currentManoIndex + 1) % gameState.players.count
+            gameState.manoPlayerId = gameState.players[nextManoIndex].id
+            gameState.currentPlayerIndex = nextManoIndex // New mano starts the round
+        } else {
+            // Fallback if mano not found, assign to first player
+            gameState.manoPlayerId = gameState.players.first?.id
+            gameState.currentPlayerIndex = 0
+        }
+
+        // Re-deal cards
+        var newDeck = GameState.newDeck()
+        newDeck.shuffle()
+        for i in 0..<gameState.players.count {
+            gameState.players[i].hand = [] // Clear old hands
+            for _ in 0..<3 {
+                if let card = newDeck.popLast() {
+                    gameState.players[i].hand.append(card)
+                }
+            }
+        }
+        gameState.deck = newDeck
+        print("Starting new round. New mano: \(gameState.manoPlayerId!)")
     }
 }
