@@ -1,3 +1,4 @@
+
 import SwiftUI
 import TrucoKit
 import Observation
@@ -30,7 +31,7 @@ struct GameView: View {
             // Game Board
             Text("Played Cards")
                 .font(.headline)
-            PlayedCardsView(playedCards: viewModel.gameState.playedCards)
+            PlayedCardsView(playedCards: viewModel.gameState.currentHandPlayedCards)
                 .padding()
 
             if let winnerName = viewModel.roundWinnerName {
@@ -39,6 +40,20 @@ struct GameView: View {
                     .fontWeight(.bold)
                     .foregroundColor(.green)
             }
+
+            // Display hand winners
+            VStack {
+                Text("Hand Winners:")
+                ForEach(viewModel.gameState.handWinners.indices, id: \.self) { index in
+                    if let winnerId = viewModel.gameState.handWinners[index] {
+                        Text("Hand \(index + 1): \(viewModel.playerName(for: winnerId))")
+                    } else {
+                        Text("Hand \(index + 1): Tie")
+                    }
+                }
+            }
+            .font(.subheadline)
+            .padding()
 
             Spacer()
 
@@ -142,6 +157,10 @@ class GameViewModel {
             return gameState.players.first(where: { $0.id == winnerId })?.name
         }
         return nil
+    }
+
+    func playerName(for id: UUID) -> String {
+        return gameState.players.first(where: { $0.id == id })?.name ?? "Unknown Player"
     }
 
     init() {

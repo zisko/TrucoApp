@@ -96,7 +96,9 @@ public struct GameState: Codable {
     public var currentPlayerIndex: Int
     public var gamePhase: GamePhase
     public var roundWinner: UUID?
-    public var playedCards: [PlayedCardInfo]
+    public var currentHandPlayedCards: [PlayedCardInfo]
+    public var handWinners: [UUID?]
+    public var manoPlayerId: UUID?
 
     public init() {
         self.players = []
@@ -104,7 +106,9 @@ public struct GameState: Codable {
         self.currentPlayerIndex = 0
         self.gamePhase = .preGame
         self.roundWinner = nil
-        self.playedCards = []
+        self.currentHandPlayedCards = []
+        self.handWinners = []
+        self.manoPlayerId = nil
     }
 
     public static func newDeck() -> [Card] {
