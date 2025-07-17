@@ -1,3 +1,4 @@
+
 import SwiftUI
 import TrucoKit
 import Observation
@@ -35,11 +36,19 @@ struct GameView: View {
 
             Spacer()
 
+            // Current Player Indicator
+            Text(viewModel.isLocalPlayerTurn ? "Your Turn" : "Opponent's Turn")
+                .font(.title2)
+                .fontWeight(.bold)
+                .padding(.bottom)
+
             // Local Player's Hand
             Text("Your Hand")
                 .font(.headline)
             HandView(cards: viewModel.gameState.players.first(where: { $0.id == viewModel.localPlayerId })?.hand ?? []) { card in
-                viewModel.playCard(card)
+                if viewModel.isLocalPlayerTurn {
+                    viewModel.playCard(card)
+                }
             }
             .padding()
 
@@ -101,6 +110,11 @@ class GameViewModel {
     private var gameEngine: TrucoEngine
     private var multiplayerService: MultiplayerService
 
+    var isLocalPlayerTurn: Bool {
+        guard let localPlayer = gameState.players.first(where: { $0.id == localPlayerId }) else { return false }
+        return gameState.players[gameState.currentPlayerIndex].id == localPlayer.id
+    }
+
     init() {
         let initialGameState = GameState()
         self.gameState = initialGameState
@@ -120,8 +134,10 @@ class GameViewModel {
     }
 
     func playCard(_ card: Card) {
-        gameEngine.handle(move: .playCard(card))
-        gameState = gameEngine.gameState
+        if isLocalPlayerTurn {
+            gameEngine.handle(move: .playCard(card))
+            gameState = gameEngine.gameState
+        }
     }
 }
 
