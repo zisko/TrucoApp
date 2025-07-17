@@ -43,8 +43,9 @@ class GameViewModel {
     private var multiplayerService: MultiplayerService
 
     init() {
-        self.gameState = GameState() // Initialize gameState first
-        self.gameEngine = TrucoEngine(initialState: self.gameState)
+        let initialGameState = GameState()
+        self.gameState = initialGameState
+        self.gameEngine = TrucoEngine(initialState: initialGameState)
         // For now, we'll use a dummy service until GameKit is fully integrated
         self.multiplayerService = GameKitService() // Placeholder
         
