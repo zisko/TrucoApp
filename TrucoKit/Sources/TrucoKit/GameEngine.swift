@@ -8,14 +8,25 @@ public class TrucoEngine {
     }
     
     public func handle(move: GameMove) {
-        // This is where the core game logic will go.
-        // We'll update the gameState based on the move.
         print("Handling move: \(move)")
         
         switch move {
         case .playCard(let card):
-            // Placeholder logic
-            print("Player played \(card.rank) of \(card.suit)")
+            guard gameState.gamePhase == .playing else { return }
+            guard var currentPlayer = gameState.players.first(where: { $0.id == gameState.players[gameState.currentPlayerIndex].id }) else { return }
+            
+            if let index = currentPlayer.hand.firstIndex(of: card) {
+                currentPlayer.hand.remove(at: index)
+                gameState.playedCards.append(card)
+                
+                // Update the player in the gameState
+                if let playerIndex = gameState.players.firstIndex(where: { $0.id == currentPlayer.id }) {
+                    gameState.players[playerIndex] = currentPlayer
+                }
+                
+                // Switch turns (simple alternating for now)
+                gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
+            }
         default:
             break
         }

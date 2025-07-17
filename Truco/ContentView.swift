@@ -1,4 +1,3 @@
-
 import SwiftUI
 import TrucoKit
 import Observation
@@ -23,23 +22,26 @@ struct GameView: View {
             // Opponent's Hand (placeholder)
             Text("Opponent's Hand")
                 .font(.headline)
-            HandView(cards: viewModel.gameState.players.first(where: { $0.id != viewModel.localPlayerId })?.hand ?? [])
+            HandView(cards: viewModel.gameState.players.first(where: { $0.id != viewModel.localPlayerId })?.hand ?? [], onCardTap: { _ in })
                 .padding()
 
             Spacer()
 
-            // Game Board (placeholder)
-            Text("Game Board")
+            // Game Board
+            Text("Played Cards")
                 .font(.headline)
-            // Display played cards here later
+            HandView(cards: viewModel.gameState.playedCards, onCardTap: { _ in })
+                .padding()
 
             Spacer()
 
             // Local Player's Hand
             Text("Your Hand")
                 .font(.headline)
-            HandView(cards: viewModel.gameState.players.first(where: { $0.id == viewModel.localPlayerId })?.hand ?? [])
-                .padding()
+            HandView(cards: viewModel.gameState.players.first(where: { $0.id == viewModel.localPlayerId })?.hand ?? []) { card in
+                viewModel.playCard(card)
+            }
+            .padding()
 
             Button("Start New Game") {
                 viewModel.dealInitialCards()
@@ -54,6 +56,7 @@ struct GameView: View {
 
 struct CardView: View {
     let card: Card
+    var onTap: (() -> Void)? = nil
 
     var body: some View {
         ZStack {
@@ -70,16 +73,22 @@ struct CardView: View {
                     .font(.caption2)
             }
         }
+        .onTapGesture {
+            onTap?()
+        }
     }
 }
 
 struct HandView: View {
     let cards: [Card]
+    var onCardTap: ((Card) -> Void)? = nil
 
     var body: some View {
         HStack {
             ForEach(cards) { card in
-                CardView(card: card)
+                CardView(card: card) {
+                    onCardTap?(card)
+                }
             }
         }
     }
@@ -106,9 +115,12 @@ class GameViewModel {
     }
 
     func dealInitialCards() {
-        // For now, we'll simulate dealing cards directly in the engine
-        // In a real multiplayer game, this would come from the host/server
         gameEngine.dealInitialCards(player1Id: localPlayerId, player2Id: UUID())
+        gameState = gameEngine.gameState
+    }
+
+    func playCard(_ card: Card) {
+        gameEngine.handle(move: .playCard(card))
         gameState = gameEngine.gameState
     }
 }
