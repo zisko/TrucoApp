@@ -45,6 +45,53 @@ public class TrucoEngine {
                     gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
                 }
             }
+        case .callTruco:
+            guard gameState.trucoState == .none else { return }
+            gameState.trucoState = .trucoCalled
+            gameState.trucoCallerId = gameState.players[gameState.currentPlayerIndex].id
+            gameState.envidoPoints = 2 // Initial Truco value
+            print("Truco called by \(gameState.players[gameState.currentPlayerIndex].name)")
+
+        case .acceptTruco:
+            // Logic to accept truco, points awarded at end of round
+            gameState.trucoState = .accepted
+            print("Truco accepted!")
+
+        case .rejectTruco:
+            // Rejecting truco means the caller wins the round immediately
+            if let callerId = gameState.trucoCallerId {
+                gameState.roundWinner = callerId
+                gameState.gamePhase = .roundOver
+                // Award points for rejected truco
+                if let callerIndex = gameState.players.firstIndex(where: { $0.id == callerId }) {
+                    gameState.players[callerIndex].score += 1 // 1 point for rejected truco
+                }
+                print("Truco rejected! \(gameState.players.first(where: { $0.id == callerId })?.name ?? "Caller") wins the round.")
+            }
+
+        case .callEnvido:
+            guard gameState.envidoState == .none else { return }
+            gameState.envidoState = .envidoCalled
+            gameState.envidoCallerId = gameState.players[gameState.currentPlayerIndex].id
+            gameState.envidoPoints = 2 // Initial Envido value
+            print("Envido called by \(gameState.players[gameState.currentPlayerIndex].name)")
+
+        case .acceptEnvido:
+            // Logic to resolve envido immediately
+            resolveEnvido()
+            gameState.envidoState = .accepted
+            print("Envido accepted!")
+
+        case .rejectEnvido:
+            // Rejecting envido means the caller gets 1 point
+            if let callerId = gameState.envidoCallerId {
+                if let callerIndex = gameState.players.firstIndex(where: { $0.id == callerId }) {
+                    gameState.players[callerIndex].score += 1
+                    print("Envido rejected! \(gameState.players.first(where: { $0.id == callerId })?.name ?? "Caller") gets 1 point.")
+                }
+            }
+            gameState.envidoState = .rejected
+
         default:
             break
         }
@@ -75,6 +122,11 @@ public class TrucoEngine {
         self.gameState.handWinners = [] // Clear hand winners for new round
         self.gameState.roundWinner = nil // Clear round winner
         self.gameState.manoPlayerId = player1Id // Player 1 is mano for the first round
+        self.gameState.trucoState = .none // Reset truco state
+        self.gameState.trucoCallerId = nil // Reset truco caller
+        self.gameState.envidoState = .none // Reset envido state
+        self.gameState.envidoCallerId = nil // Reset envido caller
+        self.gameState.envidoPoints = 0 // Reset envido points
     }
 
     private func determineHandWinner() -> UUID? {
@@ -159,6 +211,11 @@ public class TrucoEngine {
         gameState.handWinners = []
         gameState.roundWinner = nil
         gameState.gamePhase = .playing
+        gameState.trucoState = .none // Reset truco state
+        gameState.trucoCallerId = nil // Reset truco caller
+        gameState.envidoState = .none // Reset envido state
+        gameState.envidoCallerId = nil // Reset envido caller
+        gameState.envidoPoints = 0 // Reset envido points
 
         // Determine new mano player (alternates each round)
         if let currentManoIndex = gameState.players.firstIndex(where: { $0.id == gameState.manoPlayerId }) {
@@ -184,5 +241,60 @@ public class TrucoEngine {
         }
         gameState.deck = newDeck
         print("Starting new round. New mano: \(gameState.manoPlayerId!)")
+    }
+
+    private func calculateEnvidoPoints(for player: Player) -> Int {
+        var maxPoints = 0
+        let groupedBySuit = Dictionary(grouping: player.hand, by: { $0.suit })
+
+        for (_, cardsInSuit) in groupedBySuit {
+            if cardsInSuit.count >= 2 {
+                // Calculate points for cards of the same suit
+                let sortedCards = cardsInSuit.sorted { $0.envidoValue < $1.envidoValue }
+                if sortedCards.count >= 2 {
+                    let points = sortedCards.suffix(2).reduce(0) { $0 + $1.envidoValue } + 20
+                    maxPoints = max(maxPoints, points)
+                }
+            }
+        }
+
+        // If no two cards of the same suit, the highest single card value is the envido
+        if maxPoints == 0 {
+            maxPoints = player.hand.map { $0.envidoValue }.max() ?? 0
+        }
+        return maxPoints
+    }
+
+    private func resolveEnvido() {
+        guard let envidoCallerId = gameState.envidoCallerId else { return }
+        guard let player1 = gameState.players.first(where: { $0.id == gameState.players[0].id }) else { return }
+        guard let player2 = gameState.players.first(where: { $0.id == gameState.players[1].id }) else { return }
+
+        let player1EnvidoPoints = calculateEnvidoPoints(for: player1)
+        let player2EnvidoPoints = calculateEnvidoPoints(for: player2)
+
+        print("Player 1 Envido Points: \(player1EnvidoPoints)")
+        print("Player 2 Envido Points: \(player2EnvidoPoints)")
+
+        var winnerId: UUID?
+        if player1EnvidoPoints > player2EnvidoPoints {
+            winnerId = player1.id
+        } else if player2EnvidoPoints > player1EnvidoPoints {
+            winnerId = player2.id
+        } else {
+            // Tie in Envido: The player who is "mano" (started the round) wins the envido tie.
+            winnerId = gameState.manoPlayerId
+        }
+
+        if let winner = winnerId {
+            if let winnerIndex = gameState.players.firstIndex(where: { $0.id == winner }) {
+                gameState.players[winnerIndex].score += gameState.envidoPoints
+                print("Envido winner: \(gameState.players[winnerIndex].name) gets \(gameState.envidoPoints) points.")
+            }
+        }
+        // Reset envido state after resolution
+        gameState.envidoState = .none
+        gameState.envidoCallerId = nil
+        gameState.envidoPoints = 0
     }
 }
