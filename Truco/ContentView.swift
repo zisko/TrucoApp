@@ -1,3 +1,4 @@
+
 import SwiftUI
 import TrucoKit
 import Observation
@@ -87,6 +88,63 @@ struct GameView: View {
                     }
                     .padding()
                     .background(Color.green)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                }
+            }
+
+            // Truco and Envido Buttons
+            HStack {
+                if viewModel.isLocalPlayerTurn {
+                    if viewModel.gameState.trucoState == .none {
+                        Button("Truco") {
+                            viewModel.callTruco()
+                        }
+                        .padding()
+                        .background(Color.orange)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                    } else if viewModel.gameState.trucoState == .trucoCalled && viewModel.gameState.trucoCallerId != viewModel.localPlayerId {
+                        Button("Accept Truco") {
+                            viewModel.acceptTruco()
+                        }
+                        .padding()
+                        .background(Color.green)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+
+                        Button("Reject Truco") {
+                            viewModel.rejectTruco()
+                        }
+                        .padding()
+                        .background(Color.red)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                    }
+                }
+
+                if viewModel.isLocalPlayerTurn && viewModel.gameState.envidoState == .none {
+                    Button("Envido") {
+                        viewModel.callEnvido()
+                    }
+                    .padding()
+                    .background(Color.purple)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                } else if viewModel.isLocalPlayerTurn && viewModel.gameState.envidoState == .envidoCalled && viewModel.gameState.envidoCallerId != viewModel.localPlayerId {
+                    Button("Accept Envido") {
+                        viewModel.acceptEnvido()
+                    }
+                    .padding()
+                    .background(Color.green)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+
+                    Button("Reject Envido") {
+                        viewModel.rejectEnvido()
+                    }
+                    .padding()
+                    .background(Color.red)
                     .foregroundColor(.white)
                     .cornerRadius(10)
                 }
@@ -197,6 +255,36 @@ class GameViewModel {
             gameEngine.handle(move: .playCard(card))
             gameState = gameEngine.gameState
         }
+    }
+
+    func callTruco() {
+        gameEngine.handle(move: .callTruco)
+        gameState = gameEngine.gameState
+    }
+
+    func acceptTruco() {
+        gameEngine.handle(move: .acceptTruco)
+        gameState = gameEngine.gameState
+    }
+
+    func rejectTruco() {
+        gameEngine.handle(move: .rejectTruco)
+        gameState = gameEngine.gameState
+    }
+
+    func callEnvido() {
+        gameEngine.handle(move: .callEnvido)
+        gameState = gameEngine.gameState
+    }
+
+    func acceptEnvido() {
+        gameEngine.handle(move: .acceptEnvido)
+        gameState = gameEngine.gameState
+    }
+
+    func rejectEnvido() {
+        gameEngine.handle(move: .rejectEnvido)
+        gameState = gameEngine.gameState
     }
 
     func startNewRound() {
