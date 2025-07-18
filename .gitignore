@@ -1,0 +1,8 @@
+
+# Xcode
+.DS_Store
+*.xcodeproj/*.xcuserdatad/
+*.xcodeproj/xcshareddata/
+*.xcodeproj/xcuserdata/
+build/
+TrucoKit/build/
