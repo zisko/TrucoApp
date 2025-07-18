@@ -89,7 +89,7 @@ public struct PlayedCardInfo: Codable, Identifiable {
 
 // MARK: - Game State
 
-public struct GameState: Codable {
+@Observable public class GameState: Codable {
     public var players: [Player]
     public var deck: [Card]
     public var currentPlayerIndex: Int

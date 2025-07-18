@@ -9,7 +9,131 @@ struct ContentView: View {
 }
 
 struct GameView: View {
-    @State private var viewModel = GameViewModel()
+    @State var gameState: GameState
+    @State private var localPlayerId: UUID
+    private var gameEngine: TrucoEngine
+
+    var isLocalPlayerTurn: Bool {
+        guard let localPlayer = gameState.players.first(where: { $0.id == localPlayerId }) else { return false }
+        return gameState.players[gameState.currentPlayerIndex].id == localPlayer.id
+    }
+
+    var roundWinnerName: String? {
+        if let winnerId = gameState.roundWinner {
+            return gameState.players.first(where: { $0.id == winnerId })?.name
+        }
+        return nil
+    }
+
+    func playerName(for id: UUID) -> String {
+        return gameState.players.first(where: { $0.id == id })?.name ?? "Unknown Player"
+    }
+
+    init() {
+        _gameState = State(initialValue: GameState())
+        _localPlayerId = State(initialValue: UUID())
+        gameEngine = TrucoEngine(gameState: _gameState.wrappedValue)
+    }
+    
+    private func setupEngineCallbacks() {
+        gameEngine.onHandEnd = { winnerId, isRoundOver in
+            if isRoundOver {
+                // Round is over, do not clear cards immediately
+                // The UI will show all hands
+            } else {
+                // Hand is over, clear played cards and start new hand
+                // The engine already calls startNewHand internally
+            }
+            // If it's opponent's turn after hand end, make opponent move
+            if !self.isLocalPlayerTurn && self.gameState.gamePhase == .playing {
+                self.makeOpponentMove()
+            }
+        }
+    }
+
+    func dealInitialCards() {
+        gameEngine.dealInitialCards(player1Id: localPlayerId, player2Id: UUID())
+        print("dealInitialCards - isLocalPlayerTurn: \(isLocalPlayerTurn), gamePhase: \(gameState.gamePhase)")
+        if !isLocalPlayerTurn && gameState.gamePhase == .playing {
+            makeOpponentMove()
+        }
+    }
+
+    func playCard(_ card: Card) {
+        if isLocalPlayerTurn {
+            gameEngine.handle(move: .playCard(card))
+            print("playCard - isLocalPlayerTurn: \(isLocalPlayerTurn), gamePhase: \(gameState.gamePhase)")
+        }
+        // Opponent move is handled by onHandEnd closure in GameEngine
+    }
+
+    func callTruco() {
+        gameEngine.handle(move: .callTruco)
+        print("callTruco - isLocalPlayerTurn: \(isLocalPlayerTurn), gamePhase: \(gameState.gamePhase)")
+        if !isLocalPlayerTurn && gameState.gamePhase == .playing {
+            makeOpponentMove()
+        }
+    }
+
+    func acceptTruco() {
+        gameEngine.handle(move: .acceptTruco)
+        print("acceptTruco - isLocalPlayerTurn: \(isLocalPlayerTurn), gamePhase: \(gameState.gamePhase)")
+        if !isLocalPlayerTurn && gameState.gamePhase == .playing {
+            makeOpponentMove()
+        }
+    }
+
+    func rejectTruco() {
+        gameEngine.handle(move: .rejectTruco)
+
+        print("rejectTruco - isLocalPlayerTurn: \(isLocalPlayerTurn), gamePhase: \(gameState.gamePhase)")
+        if !isLocalPlayerTurn && gameState.gamePhase == .playing {
+            makeOpponentMove()
+        }
+    }
+
+    func callEnvido() {
+        gameEngine.handle(move: .callEnvido)
+        print("callEnvido - isLocalPlayerTurn: \(isLocalPlayerTurn), gamePhase: \(gameState.gamePhase)")
+        if !isLocalPlayerTurn && gameState.gamePhase == .playing {
+            makeOpponentMove()
+        }
+    }
+
+    func acceptEnvido() {
+        gameEngine.handle(move: .acceptEnvido)
+        print("acceptEnvido - isLocalPlayerTurn: \(isLocalPlayerTurn), gamePhase: \(gameState.gamePhase)")
+        if !isLocalPlayerTurn && gameState.gamePhase == .playing {
+            makeOpponentMove()
+        }
+    }
+
+    func rejectEnvido() {
+        gameEngine.handle(move: .rejectEnvido)
+        print("rejectEnvido - isLocalPlayerTurn: \(isLocalPlayerTurn), gamePhase: \(gameState.gamePhase)")
+        if !isLocalPlayerTurn && gameState.gamePhase == .playing {
+            makeOpponentMove()
+        }
+    }
+
+    func startNewRound() {
+        gameEngine.startNewRound()
+        print("startNewRound - isLocalPlayerTurn: \(isLocalPlayerTurn), gamePhase: \(gameState.gamePhase)")
+        if !isLocalPlayerTurn && gameState.gamePhase == .playing {
+            makeOpponentMove()
+        }
+    }
+    
+    private func makeOpponentMove() {
+        // Simulate thinking time
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            guard let opponent = self.gameState.players.first(where: { $0.id != self.localPlayerId }) else { return }
+            guard let randomCard = opponent.hand.randomElement() else { return }
+            
+            self.gameEngine.handle(move: .playCard(randomCard))
+            print("makeOpponentMove - isLocalPlayerTurn: \(self.isLocalPlayerTurn), gamePhase: \(self.gameState.gamePhase)")
+        }
+    }
 
     var body: some View {
         VStack {
@@ -19,10 +143,10 @@ struct GameView: View {
 
             Spacer()
 
-            // Opponent's Hand (placeholder)
+            // Opponent's Hand
             Text("Opponent's Hand")
                 .font(.headline)
-            HandView(cards: viewModel.gameState.players.first(where: { $0.id != viewModel.localPlayerId })?.hand ?? [], onCardTap: { _ in })
+            HandView(cards: gameState.players.first(where: { $0.id != localPlayerId })?.hand ?? [], onCardTap: { _ in })
                 .padding()
 
             Spacer()
@@ -30,10 +154,10 @@ struct GameView: View {
             // Game Board
             Text("Played Cards")
                 .font(.headline)
-            PlayedCardsView(playedCards: viewModel.gameState.currentHandPlayedCards)
+            PlayedCardsView(playedCards: gameState.currentHandPlayedCards)
                 .padding()
 
-            if let winnerName = viewModel.roundWinnerName {
+            if let winnerName = roundWinnerName {
                 Text("Round Winner: \(winnerName)")
                     .font(.title2)
                     .fontWeight(.bold)
@@ -43,9 +167,9 @@ struct GameView: View {
             // Display hand winners
             VStack {
                 Text("Hand Winners:")
-                ForEach(viewModel.gameState.handWinners.indices, id: \.self) { index in
-                    if let winnerId = viewModel.gameState.handWinners[index] {
-                        Text("Hand \(index + 1): \(viewModel.playerName(for: winnerId))")
+                ForEach(gameState.handWinners.indices, id: \.self) { index in
+                    if let winnerId = gameEngine.gameState.handWinners[index] {
+                        Text("Hand \(index + 1): \(playerName(for: winnerId))")
                     } else {
                         Text("Hand \(index + 1): Tie")
                     }
@@ -57,7 +181,7 @@ struct GameView: View {
             Spacer()
 
             // Current Player Indicator
-            Text(viewModel.isLocalPlayerTurn ? "Your Turn" : "Opponent's Turn")
+            Text(isLocalPlayerTurn ? "Your Turn" : "Opponent's Turn")
                 .font(.title2)
                 .fontWeight(.bold)
                 .padding(.bottom)
@@ -65,25 +189,25 @@ struct GameView: View {
             // Local Player's Hand
             Text("Your Hand")
                 .font(.headline)
-            HandView(cards: viewModel.gameState.players.first(where: { $0.id == viewModel.localPlayerId })?.hand ?? []) { card in
-                if viewModel.isLocalPlayerTurn {
-                    viewModel.playCard(card)
+            HandView(cards: gameState.players.first(where: { $0.id == localPlayerId })?.hand ?? []) { card in
+                if isLocalPlayerTurn {
+                    playCard(card)
                 }
             }
             .padding()
 
             HStack {
                 Button("Start New Game") {
-                    viewModel.dealInitialCards()
+                    dealInitialCards()
                 }
                 .padding()
                 .background(Color.blue)
                 .foregroundColor(.white)
                 .cornerRadius(10)
 
-                if viewModel.gameState.gamePhase == .roundOver {
+                if gameState.gamePhase == .roundOver {
                     Button("Start New Round") {
-                        viewModel.startNewRound()
+                        startNewRound()
                     }
                     .padding()
                     .background(Color.green)
@@ -94,18 +218,18 @@ struct GameView: View {
 
             // Truco and Envido Buttons
             HStack {
-                if viewModel.isLocalPlayerTurn {
-                    if viewModel.gameState.trucoState == .none {
+                if isLocalPlayerTurn {
+                    if gameEngine.gameState.trucoState == .none {
                         Button("Truco") {
-                            viewModel.callTruco()
+                            callTruco()
                         }
                         .padding()
                         .background(Color.orange)
                         .foregroundColor(.white)
                         .cornerRadius(10)
-                    } else if viewModel.gameState.trucoState == .trucoCalled && viewModel.gameState.trucoCallerId != viewModel.localPlayerId {
+                    } else if gameEngine.gameState.trucoState == .trucoCalled && gameEngine.gameState.trucoCallerId != localPlayerId {
                         Button("Accept Truco") {
-                            viewModel.acceptTruco()
+                            acceptTruco()
                         }
                         .padding()
                         .background(Color.green)
@@ -113,7 +237,7 @@ struct GameView: View {
                         .cornerRadius(10)
 
                         Button("Reject Truco") {
-                            viewModel.rejectTruco()
+                            rejectTruco()
                         }
                         .padding()
                         .background(Color.red)
@@ -122,17 +246,18 @@ struct GameView: View {
                     }
                 }
 
-                if viewModel.isLocalPlayerTurn && viewModel.gameState.envidoState == .none {
+                if isLocalPlayerTurn && gameEngine.gameState.envidoState == .none {
                     Button("Envido") {
-                        viewModel.callEnvido()
+                        callEnvido()
+                        
                     }
                     .padding()
                     .background(Color.purple)
                     .foregroundColor(.white)
                     .cornerRadius(10)
-                } else if viewModel.isLocalPlayerTurn && viewModel.gameState.envidoState == .envidoCalled && viewModel.gameState.envidoCallerId != viewModel.localPlayerId {
+                } else if isLocalPlayerTurn && gameEngine.gameState.envidoState == .envidoCalled && gameEngine.gameState.envidoCallerId != localPlayerId {
                     Button("Accept Envido") {
-                        viewModel.acceptEnvido()
+                        acceptEnvido()
                     }
                     .padding()
                     .background(Color.green)
@@ -140,7 +265,7 @@ struct GameView: View {
                     .cornerRadius(10)
 
                     Button("Reject Envido") {
-                        viewModel.rejectEnvido()
+                        rejectEnvido()
                     }
                     .padding()
                     .background(Color.red)
@@ -149,6 +274,7 @@ struct GameView: View {
                 }
             }
         }
+        .onAppear(perform: setupEngineCallbacks)
     }
 }
 
@@ -203,128 +329,6 @@ struct PlayedCardsView: View {
                         .font(.caption2)
                     CardView(card: playedCard.card)
                 }
-            }
-        }
-    }
-}
-
-@Observable
-class GameViewModel {
-    var gameState: GameState
-    var localPlayerId: UUID // To identify the local player
-    private var gameEngine: TrucoEngine
-    
-    var isLocalPlayerTurn: Bool {
-        guard let localPlayer = gameState.players.first(where: { $0.id == localPlayerId }) else { return false }
-        return gameState.players[gameState.currentPlayerIndex].id == localPlayer.id
-    }
-
-    var roundWinnerName: String? {
-        if let winnerId = gameState.roundWinner {
-            return gameState.players.first(where: { $0.id == winnerId })?.name
-        }
-        return nil
-    }
-
-    func playerName(for id: UUID) -> String {
-        return gameState.players.first(where: { $0.id == id })?.name ?? "Unknown Player"
-    }
-
-    init() {
-        let initialGameState = GameState()
-        self.gameState = initialGameState
-        self.gameEngine = TrucoEngine(initialState: initialGameState)
-        self.localPlayerId = UUID() // Assign a dummy ID for now
-    }
-
-    func dealInitialCards() {
-        gameEngine.dealInitialCards(player1Id: localPlayerId, player2Id: UUID())
-        gameState = gameEngine.gameState
-        if !isLocalPlayerTurn {
-            makeOpponentMove()
-        }
-    }
-
-    func playCard(_ card: Card) {
-        if isLocalPlayerTurn {
-            gameEngine.handle(move: .playCard(card))
-            gameState = gameEngine.gameState
-        }
-        if !isLocalPlayerTurn {
-            makeOpponentMove()
-        }
-    }
-
-    func callTruco() {
-        gameEngine.handle(move: .callTruco)
-        gameState = gameEngine.gameState
-        if !isLocalPlayerTurn {
-            makeOpponentMove()
-        }
-    }
-
-    func acceptTruco() {
-        gameEngine.handle(move: .acceptTruco)
-        gameState = gameEngine.gameState
-        if !isLocalPlayerTurn {
-            makeOpponentMove()
-        }
-    }
-
-    func rejectTruco() {
-        gameEngine.handle(move: .rejectTruco)
-        gameState = gameState.gamePhase == .roundOver ? gameEngine.gameState : gameState // Update only if round ended
-        if !isLocalPlayerTurn {
-            makeOpponentMove()
-        }
-    }
-
-    func callEnvido() {
-        gameEngine.handle(move: .callEnvido)
-        gameState = gameEngine.gameState
-        if !isLocalPlayerTurn {
-            makeOpponentMove()
-        }
-    }
-
-    func acceptEnvido() {
-        gameEngine.handle(move: .acceptEnvido)
-        gameState = gameEngine.gameState
-        if !isLocalPlayerTurn {
-            makeOpponentMove()
-        }
-    }
-
-    func rejectEnvido() {
-        gameEngine.handle(move: .rejectEnvido)
-        gameState = gameEngine.gameState
-        if !isLocalPlayerTurn {
-            makeOpponentMove()
-        }
-    }
-
-    func startNewRound() {
-        gameEngine.startNewRound()
-        gameState = gameEngine.gameState
-        if !isLocalPlayerTurn {
-            makeOpponentMove()
-        }
-    }
-    
-    private func makeOpponentMove() {
-        // Simulate thinking time
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            guard let opponent = self.gameState.players.first(where: { $0.id != self.localPlayerId }) else { return }
-            guard let randomCard = opponent.hand.randomElement() else { return }
-            
-            self.gameEngine.handle(move: .playCard(randomCard))
-            self.gameState = self.gameEngine.gameState
-            
-            // If it's still opponent's turn after their move (e.g., due to a rule that gives them another turn),
-            // or if the game state changes such that it's still their turn, they should make another move.
-            // For now, we'll assume one move per turn.
-            if !self.isLocalPlayerTurn && self.gameState.gamePhase == .playing {
-                self.makeOpponentMove()
             }
         }
     }
