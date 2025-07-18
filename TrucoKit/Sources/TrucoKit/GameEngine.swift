@@ -42,7 +42,8 @@ public class TrucoEngine {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                         [weak self] in
                         guard let self = self else { return }
-                        let isRoundOverAfterCheck = self.gameState.gamePhase == .roundOver
+                        let isRoundOverAfterCheck =
+                            self.gameState.gamePhase == .roundOver
 
                         if !isRoundOverAfterCheck {  // Only clear if round is not over
                             self.gameState.currentHandPlayedCards = []
@@ -55,7 +56,7 @@ public class TrucoEngine {
                     gameState.currentPlayerIndex =
                         (gameState.currentPlayerIndex + 1)
                         % gameState.players.count
-                    self.onHandEnd?(nil, false) // Signal that a card was played and turn switched
+                    self.onHandEnd?(nil, false)  // Signal that a card was played and turn switched
                 }
             }
         case .callTruco:
@@ -340,7 +341,10 @@ public class TrucoEngine {
     }
 
     private func resolveEnvido() {
-        guard let envidoCallerId = gameState.envidoCallerId else { return }
+        guard let envidoCallerId = gameState.envidoCallerId else {
+            print("error: attempted to resolve envido but it was never called")
+            return
+        }
         guard
             let player1 = gameState.players.first(where: {
                 $0.id == gameState.players[0].id
