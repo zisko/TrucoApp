@@ -35,8 +35,9 @@ public class TrucoEngine {
 
                 // Check if hand is over
                 if gameState.currentHandPlayedCards.count == 2 {
-                    let handWinnerId = determineHandWinner()
+                    let (handWinnerId, winningCard) = determineHandWinnerAndCard()
                     gameState.handWinners.append(handWinnerId)
+                    gameState.handWinningCards.append(winningCard)
 
                     // Delay before clearing cards and checking round end
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
@@ -179,22 +180,22 @@ public class TrucoEngine {
         self.gameState.envidoPoints = 0  // Reset envido points
     }
 
-    private func determineHandWinner() -> UUID? {
-        guard gameState.currentHandPlayedCards.count == 2 else { return nil }
+    private func determineHandWinnerAndCard() -> (UUID?, Card?) {
+        guard gameState.currentHandPlayedCards.count == 2 else { return (nil, nil) }
 
         let card1Info = gameState.currentHandPlayedCards[0]
         let card2Info = gameState.currentHandPlayedCards[1]
 
         if card1Info.card.trucoValue < card2Info.card.trucoValue {
             print("Hand winner: Player \(card1Info.player)")
-            return card1Info.player
+            return (card1Info.player, card1Info.card)
         } else if card2Info.card.trucoValue < card1Info.card.trucoValue {
             print("Hand winner: Player \(card2Info.player)")
-            return card2Info.player
+            return (card2Info.player, card2Info.card)
         } else {
             // It's a tie for this hand. Return nil to indicate a tie that checkRoundEnd will resolve.
             print("Hand tie.")
-            return nil
+            return (nil, nil)
         }
     }
 
@@ -278,6 +279,7 @@ public class TrucoEngine {
         // Reset game state for a new round
         gameState.currentHandPlayedCards = []
         gameState.handWinners = []
+        gameState.handWinningCards = []
         gameState.roundWinner = nil
         gameState.gamePhase = .playing
         gameState.trucoState = .none  // Reset truco state

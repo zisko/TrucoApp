@@ -158,19 +158,11 @@ struct GameView: View {
                     .foregroundColor(.green)
             }
 
-            // Display hand winners
-            VStack {
-                Text("Hand Winners:")
-                ForEach(gameState.handWinners.indices, id: \.self) { index in
-                    if let winnerId = gameEngine.gameState.handWinners[index] {
-                        Text("Hand \(index + 1): \(playerName(for: winnerId))")
-                    } else {
-                        Text("Hand \(index + 1): Tie")
-                    }
-                }
-            }
-            .font(.subheadline)
-            .padding()
+            HandWinnersDisplayView(
+                handWinners: gameState.handWinners,
+                handWinningCards: gameState.handWinningCards,
+                players: gameState.players
+            )
 
             Spacer()
 

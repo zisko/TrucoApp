@@ -72,18 +72,30 @@ public struct Card: Codable, Hashable, Identifiable {
         default: return rank.rawValue
         }
     }
+    
+    public init(rank: Rank, suit: Suit) {
+        self.rank = rank
+        self.suit = suit
+    }
 }
 
 public struct Player: Codable, Hashable, Identifiable {
-    public let id: UUID
+    public var id: UUID
     public var name: String
     public var hand: [Card]
     public var score: Int
+
+    public init(id: UUID, name: String, hand: [Card], score: Int) {
+        self.id = id
+        self.name = name
+        self.hand = hand
+        self.score = score
+    }
 }
 
 public struct PlayedCardInfo: Codable, Identifiable {
-    public let id = UUID()
-    public let player: UUID
+    public var id = UUID()
+    public var player: UUID
     public let card: Card
 }
 
@@ -97,6 +109,7 @@ public struct PlayedCardInfo: Codable, Identifiable {
     public var roundWinner: UUID?
     public var currentHandPlayedCards: [PlayedCardInfo]
     public var handWinners: [UUID?]
+    public var handWinningCards: [Card?]
     public var manoPlayerId: UUID?
 
     // Truco State
@@ -116,6 +129,7 @@ public struct PlayedCardInfo: Codable, Identifiable {
         self.roundWinner = nil
         self.currentHandPlayedCards = []
         self.handWinners = []
+        self.handWinningCards = []
         self.manoPlayerId = nil
         self.trucoState = .none
         self.trucoCallerId = nil
