@@ -63,17 +63,16 @@ public class TrucoEngine {
         case .callTruco:
             guard gameState.trucoState != .rejected else { return }  // Cannot call truco if already rejected
 
-            let currentTrucoPoints: Int
             switch gameState.trucoState {
             case .none:
                 gameState.trucoState = .trucoCalled
-                currentTrucoPoints = 2
+                gameState.trucoPoints = 2
             case .trucoCalled:
                 gameState.trucoState = .retrucoCalled
-                currentTrucoPoints = 3
+                gameState.trucoPoints = 3
             case .retrucoCalled:
                 gameState.trucoState = .valeCuatroCalled
-                currentTrucoPoints = 4
+                gameState.trucoPoints = 4
             case .valeCuatroCalled:
                 return  // Cannot call truco beyond vale cuatro
             case .accepted, .rejected:
@@ -81,9 +80,8 @@ public class TrucoEngine {
             }
             gameState.trucoCallerId =
                 gameState.players[gameState.currentPlayerIndex].id
-            gameState.envidoPoints = currentTrucoPoints  // Truco points are stored in envidoPoints for now
             print(
-                "Truco called by \(gameState.players[gameState.currentPlayerIndex].name). Current Truco points: \(currentTrucoPoints)"
+                "Truco called by \(gameState.players[gameState.currentPlayerIndex].name). Current Truco points: \(gameState.trucoPoints)"
             )
 
         case .acceptTruco:
@@ -95,15 +93,17 @@ public class TrucoEngine {
                 if let callerIndex = gameState.players.firstIndex(where: {
                     $0.id == callerId
                 }) {
-                    gameState.players[callerIndex].score +=
-                        (gameState.envidoPoints - 1)  // Award points for rejected truco
+                    let points = (gameState.trucoPoints > 0) ? (gameState.trucoPoints - 1) : 1
+                    gameState.players[callerIndex].score += points
                     print(
-                        "Truco rejected! \(gameState.players[callerIndex].name) gets \(gameState.envidoPoints - 1) points."
+                        "Truco rejected! \(gameState.players[callerIndex].name) gets \(points) points."
                     )
                 }
             }
             gameState.gamePhase = .roundOver  // Round ends immediately
             gameState.trucoState = .rejected
+            awardRoundPoints() // Award points to the winner of the round
+            checkMatchEnd() // Check if the match is over
 
         case .callEnvido:
             guard gameState.envidoState == .none else { return }  // Envido can only be called once per round
@@ -172,83 +172,96 @@ public class TrucoEngine {
         self.gameState.currentHandPlayedCards = []  // Clear played cards for new hand
         self.gameState.handOutcomes = []  // Clear hand outcomes for new round
         self.gameState.roundWinner = nil  // Clear round winner
+        self.gameState.matchWinner = nil // Clear match winner
         self.gameState.manoPlayerId = player1Id  // Player 1 is mano for the first round
         self.gameState.trucoState = .none  // Reset truco state
         self.gameState.trucoCallerId = nil  // Reset truco caller
+        self.gameState.trucoPoints = 0 // Reset truco points
         self.gameState.envidoState = .none  // Reset envido state
         self.gameState.envidoCallerId = nil  // Reset envido caller
         self.gameState.envidoPoints = 0  // Reset envido points
     }
 
     private func determineHandOutcome() -> HandOutcome {
-    guard gameState.currentHandPlayedCards.count == 2 else {
-        // This case should ideally not be reached if called correctly
-        return HandOutcome(winnerId: nil, winningCard: nil, losingCard: nil)
-    }
+        guard gameState.currentHandPlayedCards.count == 2 else {
+            // This case should ideally not be reached if called correctly
+            return HandOutcome(winnerId: nil, winningCard: nil, losingCard: nil)
+        }
 
-    let play1 = gameState.currentHandPlayedCards[0]
-    let play2 = gameState.currentHandPlayedCards[1]
+        let play1 = gameState.currentHandPlayedCards[0]
+        let play2 = gameState.currentHandPlayedCards[1]
 
-    if play1.card.trucoValue < play2.card.trucoValue {
-        return HandOutcome(winnerId: play1.player, winningCard: play1.card, losingCard: play2.card)
-    } else if play2.card.trucoValue < play1.card.trucoValue {
-        return HandOutcome(winnerId: play2.player, winningCard: play2.card, losingCard: play1.card)
-    } else {
-        // Tie
-        return HandOutcome(winnerId: nil, winningCard: play1.card, losingCard: play2.card)
+        if play1.card.trucoValue < play2.card.trucoValue {
+            return HandOutcome(winnerId: play1.player, winningCard: play1.card, losingCard: play2.card)
+        } else if play2.card.trucoValue < play1.card.trucoValue {
+            return HandOutcome(winnerId: play2.player, winningCard: play2.card, losingCard: play1.card)
+        } else {
+            // Tie
+            return HandOutcome(winnerId: nil, winningCard: play1.card, losingCard: play2.card)
+        }
     }
-}
 
     private func checkRoundEnd() {
         let handWinners = gameState.handOutcomes.map { $0.winnerId }
         let player1Id = gameState.players[0].id
         let player2Id = gameState.players[1].id
 
-        let player1HandWins = handWinners.filter { $0 == player1Id }
-            .count
-        let player2HandWins = handWinners.filter { $0 == player2Id }
-            .count
+        let player1HandWins = handWinners.filter { $0 == player1Id }.count
+        let player2HandWins = handWinners.filter { $0 == player2Id }.count
         let tiedHands = handWinners.filter { $0 == nil }.count
+
+        var roundWinnerDetermined = false
 
         // Rule 1: A player wins two hands outright
         if player1HandWins >= 2 {
             gameState.roundWinner = player1Id
-            gameState.gamePhase = .roundOver
-            print("Round over. Player 1 wins the round!")
+            roundWinnerDetermined = true
         } else if player2HandWins >= 2 {
             gameState.roundWinner = player2Id
-            gameState.gamePhase = .roundOver
-            print("Round over. Player 2 wins the round!")
+            roundWinnerDetermined = true
         }
         // Rule 2: All three hands played
         else if handWinners.count == 3 {
-            // Scenario A: All three hands are tied (e.g., [nil, nil, nil])
             if tiedHands == 3 {
                 gameState.roundWinner = gameState.manoPlayerId
-                gameState.gamePhase = .roundOver
-                print(
-                    "Round over. All hands tied, mano player \(gameState.manoPlayerId!) wins the round!"
-                )
-            }
-            // Scenario B: One hand tied, one won by each player (e.g., [winner1, nil, winner2] or [nil, winner1, winner2])
-            // The rule states: "If a player or team wins the first hand, loses the second, and ties the third, the player or team that won the first hand wins the round."
-            // This implies that if there's a tie in any hand, the winner of the first non-tied hand wins the round.
-            else {
-                // Find the winner of the first non-tied hand
-                if let firstNonTiedHandWinner = handWinners.first(
-                    where: { $0 != nil })
-                {
+            } else {
+                if let firstNonTiedHandWinner = handWinners.first(where: { $0 != nil }) {
                     gameState.roundWinner = firstNonTiedHandWinner
-                    gameState.gamePhase = .roundOver
-                    print(
-                        "Round over. First non-tied hand winner \(firstNonTiedHandWinner!) wins the round due to tie-breaking rules."
-                    )
-                } else {
-                    // This case should ideally not be reached if all rules are covered.
-                    // It means there are hands played, but all are ties, and not all 3 hands are tied.
-                    print("Unexpected round end scenario with ties.")
                 }
             }
+            roundWinnerDetermined = true
+        }
+
+        if roundWinnerDetermined {
+            gameState.gamePhase = .roundOver
+            awardRoundPoints()
+            checkMatchEnd()
+        }
+    }
+
+    private func awardRoundPoints() {
+        guard let winnerId = gameState.roundWinner,
+              let winnerIndex = gameState.players.firstIndex(where: { $0.id == winnerId }) else { return }
+
+        let points: Int
+        switch gameState.trucoState {
+        case .none, .rejected:
+            points = 1
+        case .accepted:
+            points = gameState.trucoPoints
+        default:
+            points = gameState.trucoPoints
+        }
+
+        gameState.players[winnerIndex].score += points
+        print("Awarded \(points) to \(gameState.players[winnerIndex].name). New score: \(gameState.players[winnerIndex].score)")
+    }
+
+    private func checkMatchEnd() {
+        if let winningPlayer = gameState.players.first(where: { $0.score >= 30 }) {
+            gameState.gamePhase = .gameOver
+            gameState.matchWinner = winningPlayer.id
+            print("Match over! Winner is \(winningPlayer.name)")
         }
     }
 
@@ -284,6 +297,7 @@ public class TrucoEngine {
         gameState.gamePhase = .playing
         gameState.trucoState = .none  // Reset truco state
         gameState.trucoCallerId = nil  // Reset truco caller
+        gameState.trucoPoints = 0
         gameState.envidoState = .none  // Reset envido state
         gameState.envidoCallerId = nil  // Reset envido caller
         gameState.envidoPoints = 0  // Reset envido points

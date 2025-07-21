@@ -27,17 +27,18 @@ struct HandWinnersDisplayView: View {
                         if let losingCard = outcome.losingCard {
                             CardView(card: losingCard)
                                 .frame(width: 30, height: 45)
-                                .rotationEffect(.degrees(-5))
-                                .offset(x: -10)
+                                .rotationEffect(.degrees(-30))
+                                .offset(x: -30)
                         }
                         if let winningCard = outcome.winningCard {
                             CardView(card: winningCard)
                                 .frame(width: 30, height: 45)
                         }
-                    }
+                    }.offset(x: 60)
                 }
             }
         }
+        .frame(width: 300, height: 250)
         .padding()
         .background(Color.brown.opacity(0.3))
         .cornerRadius(10)

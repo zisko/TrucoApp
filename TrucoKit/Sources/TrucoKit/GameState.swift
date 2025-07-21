@@ -118,6 +118,7 @@ public struct HandOutcome: Codable, Hashable {
     public var currentPlayerIndex: Int
     public var gamePhase: GamePhase
     public var roundWinner: UUID?
+    public var matchWinner: UUID?
     public var currentHandPlayedCards: [PlayedCardInfo]
     public var handOutcomes: [HandOutcome]
     public var manoPlayerId: UUID?
@@ -125,6 +126,7 @@ public struct HandOutcome: Codable, Hashable {
     // Truco State
     public var trucoState: TrucoState
     public var trucoCallerId: UUID?
+    public var trucoPoints: Int
 
     // Envido State
     public var envidoState: EnvidoState
@@ -132,7 +134,7 @@ public struct HandOutcome: Codable, Hashable {
     public var envidoPoints: Int // The points value of the current envido call
 
     enum CodingKeys: String, CodingKey {
-        case players, deck, currentPlayerIndex, gamePhase, roundWinner, currentHandPlayedCards, handOutcomes, manoPlayerId, trucoState, trucoCallerId, envidoState, envidoCallerId, envidoPoints
+        case players, deck, currentPlayerIndex, gamePhase, roundWinner, matchWinner, currentHandPlayedCards, handOutcomes, manoPlayerId, trucoState, trucoCallerId, trucoPoints, envidoState, envidoCallerId, envidoPoints
     }
 
     public required init(from decoder: Decoder) throws {
@@ -142,11 +144,13 @@ public struct HandOutcome: Codable, Hashable {
         self.currentPlayerIndex = try container.decode(Int.self, forKey: .currentPlayerIndex)
         self.gamePhase = try container.decode(GamePhase.self, forKey: .gamePhase)
         self.roundWinner = try container.decode(UUID?.self, forKey: .roundWinner)
+        self.matchWinner = try container.decode(UUID?.self, forKey: .matchWinner)
         self.currentHandPlayedCards = try container.decode([PlayedCardInfo].self, forKey: .currentHandPlayedCards)
         self.handOutcomes = try container.decode([HandOutcome].self, forKey: .handOutcomes)
         self.manoPlayerId = try container.decode(UUID?.self, forKey: .manoPlayerId)
         self.trucoState = try container.decode(TrucoState.self, forKey: .trucoState)
         self.trucoCallerId = try container.decode(UUID?.self, forKey: .trucoCallerId)
+        self.trucoPoints = try container.decode(Int.self, forKey: .trucoPoints)
         self.envidoState = try container.decode(EnvidoState.self, forKey: .envidoState)
         self.envidoCallerId = try container.decode(UUID?.self, forKey: .envidoCallerId)
         self.envidoPoints = try container.decode(Int.self, forKey: .envidoPoints)
@@ -159,11 +163,13 @@ public struct HandOutcome: Codable, Hashable {
         try container.encode(currentPlayerIndex, forKey: .currentPlayerIndex)
         try container.encode(gamePhase, forKey: .gamePhase)
         try container.encode(roundWinner, forKey: .roundWinner)
+        try container.encode(matchWinner, forKey: .matchWinner)
         try container.encode(currentHandPlayedCards, forKey: .currentHandPlayedCards)
         try container.encode(handOutcomes, forKey: .handOutcomes)
         try container.encode(manoPlayerId, forKey: .manoPlayerId)
         try container.encode(trucoState, forKey: .trucoState)
         try container.encode(trucoCallerId, forKey: .trucoCallerId)
+        try container.encode(trucoPoints, forKey: .trucoPoints)
         try container.encode(envidoState, forKey: .envidoState)
         try container.encode(envidoCallerId, forKey: .envidoCallerId)
         try container.encode(envidoPoints, forKey: .envidoPoints)
@@ -175,11 +181,13 @@ public struct HandOutcome: Codable, Hashable {
         self.currentPlayerIndex = 0
         self.gamePhase = .preGame
         self.roundWinner = nil
+        self.matchWinner = nil
         self.currentHandPlayedCards = []
         self.handOutcomes = []
         self.manoPlayerId = nil
         self.trucoState = .none
         self.trucoCallerId = nil
+        self.trucoPoints = 0
         self.envidoState = .none
         self.envidoCallerId = nil
         self.envidoPoints = 0
