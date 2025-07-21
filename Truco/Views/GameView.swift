@@ -159,8 +159,7 @@ struct GameView: View {
             }
 
             HandWinnersDisplayView(
-                handWinners: gameState.handWinners,
-                handWinningCards: gameState.handWinningCards,
+                handOutcomes: gameState.handOutcomes,
                 players: gameState.players
             )
 

@@ -61,7 +61,6 @@ public struct Card: Codable, Hashable, Identifiable {
         case (.six, _): return 12
         case (.five, _): return 13
         case (.four, _): return 14
-        default: return 15 // Should not happen
         }
     }
 
@@ -99,6 +98,18 @@ public struct PlayedCardInfo: Codable, Identifiable {
     public let card: Card
 }
 
+public struct HandOutcome: Codable, Hashable {
+    public var winnerId: UUID?
+    public let winningCard: Card?
+    public let losingCard: Card?
+
+    public init(winnerId: UUID?, winningCard: Card?, losingCard: Card?) {
+        self.winnerId = winnerId
+        self.winningCard = winningCard
+        self.losingCard = losingCard
+    }
+}
+
 // MARK: - Game State
 
 @Observable public class GameState: Codable {
@@ -108,8 +119,7 @@ public struct PlayedCardInfo: Codable, Identifiable {
     public var gamePhase: GamePhase
     public var roundWinner: UUID?
     public var currentHandPlayedCards: [PlayedCardInfo]
-    public var handWinners: [UUID?]
-    public var handWinningCards: [Card?]
+    public var handOutcomes: [HandOutcome]
     public var manoPlayerId: UUID?
 
     // Truco State
@@ -121,6 +131,44 @@ public struct PlayedCardInfo: Codable, Identifiable {
     public var envidoCallerId: UUID?
     public var envidoPoints: Int // The points value of the current envido call
 
+    enum CodingKeys: String, CodingKey {
+        case players, deck, currentPlayerIndex, gamePhase, roundWinner, currentHandPlayedCards, handOutcomes, manoPlayerId, trucoState, trucoCallerId, envidoState, envidoCallerId, envidoPoints
+    }
+
+    public required init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.players = try container.decode([Player].self, forKey: .players)
+        self.deck = try container.decode([Card].self, forKey: .deck)
+        self.currentPlayerIndex = try container.decode(Int.self, forKey: .currentPlayerIndex)
+        self.gamePhase = try container.decode(GamePhase.self, forKey: .gamePhase)
+        self.roundWinner = try container.decode(UUID?.self, forKey: .roundWinner)
+        self.currentHandPlayedCards = try container.decode([PlayedCardInfo].self, forKey: .currentHandPlayedCards)
+        self.handOutcomes = try container.decode([HandOutcome].self, forKey: .handOutcomes)
+        self.manoPlayerId = try container.decode(UUID?.self, forKey: .manoPlayerId)
+        self.trucoState = try container.decode(TrucoState.self, forKey: .trucoState)
+        self.trucoCallerId = try container.decode(UUID?.self, forKey: .trucoCallerId)
+        self.envidoState = try container.decode(EnvidoState.self, forKey: .envidoState)
+        self.envidoCallerId = try container.decode(UUID?.self, forKey: .envidoCallerId)
+        self.envidoPoints = try container.decode(Int.self, forKey: .envidoPoints)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(players, forKey: .players)
+        try container.encode(deck, forKey: .deck)
+        try container.encode(currentPlayerIndex, forKey: .currentPlayerIndex)
+        try container.encode(gamePhase, forKey: .gamePhase)
+        try container.encode(roundWinner, forKey: .roundWinner)
+        try container.encode(currentHandPlayedCards, forKey: .currentHandPlayedCards)
+        try container.encode(handOutcomes, forKey: .handOutcomes)
+        try container.encode(manoPlayerId, forKey: .manoPlayerId)
+        try container.encode(trucoState, forKey: .trucoState)
+        try container.encode(trucoCallerId, forKey: .trucoCallerId)
+        try container.encode(envidoState, forKey: .envidoState)
+        try container.encode(envidoCallerId, forKey: .envidoCallerId)
+        try container.encode(envidoPoints, forKey: .envidoPoints)
+    }
+
     public init() {
         self.players = []
         self.deck = GameState.newDeck()
@@ -128,8 +176,7 @@ public struct PlayedCardInfo: Codable, Identifiable {
         self.gamePhase = .preGame
         self.roundWinner = nil
         self.currentHandPlayedCards = []
-        self.handWinners = []
-        self.handWinningCards = []
+        self.handOutcomes = []
         self.manoPlayerId = nil
         self.trucoState = .none
         self.trucoCallerId = nil

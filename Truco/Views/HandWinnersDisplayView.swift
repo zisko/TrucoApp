@@ -2,8 +2,7 @@ import SwiftUI
 import TrucoKit
 
 struct HandWinnersDisplayView: View {
-    let handWinners: [UUID?]
-    let handWinningCards: [Card?]
+    let handOutcomes: [HandOutcome]
     let players: [Player]
 
     private func playerName(for id: UUID) -> String {
@@ -12,38 +11,37 @@ struct HandWinnersDisplayView: View {
 
     var body: some View {
         VStack {
-            Text("Hand Winners:")
+            Text("Hand Results:")
                 .font(.subheadline)
 
-            ForEach(handWinners.indices, id: \.self) { index in
+            ForEach(handOutcomes.indices, id: \.self) { index in
+                let outcome = handOutcomes[index]
                 HStack {
-                    if let winnerId = handWinners[index] {
+                    if let winnerId = outcome.winnerId {
                         Text("Hand \(index + 1): \(playerName(for: winnerId))")
                     } else {
                         Text("Hand \(index + 1): Tie")
                     }
 
-                    if let winningCard = handWinningCards[index] {
-                        ZStack {
-                            // Background card (if any)
-                            if index > 0, let prevWinningCard = handWinningCards[index - 1] {
-                                CardView(card: prevWinningCard)
-                                    .frame(width: 30, height: 45) // Tiny size
-                                    .rotationEffect(.degrees(-10)) // Slight rotation for overlapping effect
-                                    .offset(x: -10) // Overlap
-                            }
-                            // Winning card on top
+                    ZStack {
+                        if let losingCard = outcome.losingCard {
+                            CardView(card: losingCard)
+                                .frame(width: 30, height: 45)
+                                .rotationEffect(.degrees(-5))
+                                .offset(x: -10)
+                        }
+                        if let winningCard = outcome.winningCard {
                             CardView(card: winningCard)
-                                .frame(width: 30, height: 45) // Tiny size
+                                .frame(width: 30, height: 45)
                         }
                     }
                 }
             }
         }
         .padding()
-        .background(Color.brown.opacity(0.3)) // Card table like background
+        .background(Color.brown.opacity(0.3))
         .cornerRadius(10)
-        .padding() // Inset from edges
+        .padding()
     }
 }
 
@@ -53,10 +51,15 @@ struct HandWinnersDisplayView: View {
 
     let card1 = Card(rank: .ace, suit: .espadas)
     let card2 = Card(rank: .twelve, suit: .copas)
+    let card3 = Card(rank: .three, suit: .bastos)
+    let card4 = Card(rank: .seven, suit: .oros)
 
     HandWinnersDisplayView(
-        handWinners: [player1.id, player2.id, nil],
-        handWinningCards: [card1, card2, nil],
+        handOutcomes: [
+            HandOutcome(winnerId: player1.id, winningCard: card1, losingCard: card2),
+            HandOutcome(winnerId: player2.id, winningCard: card4, losingCard: card3),
+            HandOutcome(winnerId: nil, winningCard: card1, losingCard: card1) // Tie example
+        ],
         players: [player1, player2]
     )
     .previewLayout(.sizeThatFits)

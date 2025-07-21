@@ -35,14 +35,14 @@ public class TrucoEngine {
 
                 // Check if hand is over
                 if gameState.currentHandPlayedCards.count == 2 {
-                    let (handWinnerId, winningCard) = determineHandWinnerAndCard()
-                    gameState.handWinners.append(handWinnerId)
-                    gameState.handWinningCards.append(winningCard)
+                    let outcome = determineHandOutcome()
+                    gameState.handOutcomes.append(outcome)
 
                     // Delay before clearing cards and checking round end
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                         [weak self] in
                         guard let self = self else { return }
+                        self.checkRoundEnd() // checkRoundEnd will now be called here
                         let isRoundOverAfterCheck =
                             self.gameState.gamePhase == .roundOver
 
@@ -50,7 +50,7 @@ public class TrucoEngine {
                             self.gameState.currentHandPlayedCards = []
                             self.startNewHand()
                         }
-                        self.onHandEnd?(handWinnerId, isRoundOverAfterCheck)
+                        self.onHandEnd?(outcome.winnerId, isRoundOverAfterCheck)
                     }
                 } else {
                     // Only one card played, switch turns
@@ -170,7 +170,7 @@ public class TrucoEngine {
         self.gameState.gamePhase = .playing
         self.gameState.currentPlayerIndex = 0  // Player 1 starts
         self.gameState.currentHandPlayedCards = []  // Clear played cards for new hand
-        self.gameState.handWinners = []  // Clear hand winners for new round
+        self.gameState.handOutcomes = []  // Clear hand outcomes for new round
         self.gameState.roundWinner = nil  // Clear round winner
         self.gameState.manoPlayerId = player1Id  // Player 1 is mano for the first round
         self.gameState.trucoState = .none  // Reset truco state
@@ -180,34 +180,35 @@ public class TrucoEngine {
         self.gameState.envidoPoints = 0  // Reset envido points
     }
 
-    private func determineHandWinnerAndCard() -> (UUID?, Card?) {
-        guard gameState.currentHandPlayedCards.count == 2 else { return (nil, nil) }
-
-        let card1Info = gameState.currentHandPlayedCards[0]
-        let card2Info = gameState.currentHandPlayedCards[1]
-
-        if card1Info.card.trucoValue < card2Info.card.trucoValue {
-            print("Hand winner: Player \(card1Info.player)")
-            return (card1Info.player, card1Info.card)
-        } else if card2Info.card.trucoValue < card1Info.card.trucoValue {
-            print("Hand winner: Player \(card2Info.player)")
-            return (card2Info.player, card2Info.card)
-        } else {
-            // It's a tie for this hand. Return nil to indicate a tie that checkRoundEnd will resolve.
-            print("Hand tie.")
-            return (nil, nil)
-        }
+    private func determineHandOutcome() -> HandOutcome {
+    guard gameState.currentHandPlayedCards.count == 2 else {
+        // This case should ideally not be reached if called correctly
+        return HandOutcome(winnerId: nil, winningCard: nil, losingCard: nil)
     }
 
+    let play1 = gameState.currentHandPlayedCards[0]
+    let play2 = gameState.currentHandPlayedCards[1]
+
+    if play1.card.trucoValue < play2.card.trucoValue {
+        return HandOutcome(winnerId: play1.player, winningCard: play1.card, losingCard: play2.card)
+    } else if play2.card.trucoValue < play1.card.trucoValue {
+        return HandOutcome(winnerId: play2.player, winningCard: play2.card, losingCard: play1.card)
+    } else {
+        // Tie
+        return HandOutcome(winnerId: nil, winningCard: play1.card, losingCard: play2.card)
+    }
+}
+
     private func checkRoundEnd() {
+        let handWinners = gameState.handOutcomes.map { $0.winnerId }
         let player1Id = gameState.players[0].id
         let player2Id = gameState.players[1].id
 
-        let player1HandWins = gameState.handWinners.filter { $0 == player1Id }
+        let player1HandWins = handWinners.filter { $0 == player1Id }
             .count
-        let player2HandWins = gameState.handWinners.filter { $0 == player2Id }
+        let player2HandWins = handWinners.filter { $0 == player2Id }
             .count
-        let tiedHands = gameState.handWinners.filter { $0 == nil }.count
+        let tiedHands = handWinners.filter { $0 == nil }.count
 
         // Rule 1: A player wins two hands outright
         if player1HandWins >= 2 {
@@ -220,7 +221,7 @@ public class TrucoEngine {
             print("Round over. Player 2 wins the round!")
         }
         // Rule 2: All three hands played
-        else if gameState.handWinners.count == 3 {
+        else if handWinners.count == 3 {
             // Scenario A: All three hands are tied (e.g., [nil, nil, nil])
             if tiedHands == 3 {
                 gameState.roundWinner = gameState.manoPlayerId
@@ -234,7 +235,7 @@ public class TrucoEngine {
             // This implies that if there's a tie in any hand, the winner of the first non-tied hand wins the round.
             else {
                 // Find the winner of the first non-tied hand
-                if let firstNonTiedHandWinner = gameState.handWinners.first(
+                if let firstNonTiedHandWinner = handWinners.first(
                     where: { $0 != nil })
                 {
                     gameState.roundWinner = firstNonTiedHandWinner
@@ -258,8 +259,8 @@ public class TrucoEngine {
             gameState.currentHandPlayedCards = []
         }
         // The player who won the last hand starts the next hand. If it was a tie, the mano player starts.
-        if let lastHandWinner = gameState.handWinners.last,
-            let winnerId = lastHandWinner
+        if let lastOutcome = gameState.handOutcomes.last,
+            let winnerId = lastOutcome.winnerId
         {
             gameState.currentPlayerIndex =
                 gameState.players.firstIndex(where: { $0.id == winnerId }) ?? 0
@@ -278,8 +279,7 @@ public class TrucoEngine {
     public func startNewRound() {
         // Reset game state for a new round
         gameState.currentHandPlayedCards = []
-        gameState.handWinners = []
-        gameState.handWinningCards = []
+        gameState.handOutcomes = []
         gameState.roundWinner = nil
         gameState.gamePhase = .playing
         gameState.trucoState = .none  // Reset truco state
@@ -343,7 +343,7 @@ public class TrucoEngine {
     }
 
     private func resolveEnvido() {
-        guard let envidoCallerId = gameState.envidoCallerId else {
+        guard gameState.envidoCallerId != nil else {
             print("error: attempted to resolve envido but it was never called")
             return
         }
