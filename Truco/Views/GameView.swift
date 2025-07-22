@@ -5,6 +5,7 @@ import Observation
 struct GameView: View {
     @State var gameState: GameState
     @State private var localPlayerId: UUID
+    @State private var isHandWinnersExpanded = false
     private var gameEngine: TrucoEngine
 
     var isLocalPlayerTurn: Bool {
@@ -178,6 +179,7 @@ struct GameView: View {
                 }
 
                 HandWinnersDisplayView(
+                    isExpanded: $isHandWinnersExpanded,
                     handOutcomes: gameState.handOutcomes,
                     players: gameState.players
                 )
