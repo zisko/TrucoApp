@@ -2,7 +2,6 @@ import Foundation
 
 public class TrucoEngine {
     public var gameState: GameState
-    public var onHandEnd: ((UUID?, Bool) -> Void)?  // New closure for hand end
 
     public init(gameState: GameState) {
         self.gameState = gameState
@@ -37,27 +36,12 @@ public class TrucoEngine {
                 if gameState.currentHandPlayedCards.count == 2 {
                     let outcome = determineHandOutcome()
                     gameState.handOutcomes.append(outcome)
-
-                    // Delay before clearing cards and checking round end
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                        [weak self] in
-                        guard let self = self else { return }
-                        self.checkRoundEnd() // checkRoundEnd will now be called here
-                        let isRoundOverAfterCheck =
-                            self.gameState.gamePhase == .roundOver
-
-                        if !isRoundOverAfterCheck {  // Only clear if round is not over
-                            self.gameState.currentHandPlayedCards = []
-                            self.startNewHand()
-                        }
-                        self.onHandEnd?(outcome.winnerId, isRoundOverAfterCheck)
-                    }
+                    gameState.gamePhase = .handOver // NEW: Pause for user to see result
                 } else {
                     // Only one card played, switch turns
                     gameState.currentPlayerIndex =
                         (gameState.currentPlayerIndex + 1)
                         % gameState.players.count
-                    self.onHandEnd?(nil, false)  // Signal that a card was played and turn switched
                 }
             }
         case .callTruco:
@@ -100,10 +84,13 @@ public class TrucoEngine {
                     )
                 }
             }
-            gameState.gamePhase = .roundOver  // Round ends immediately
+            gameState.gamePhase = .roundSummary  // Round ends immediately
             gameState.trucoState = .rejected
             awardRoundPoints() // Award points to the winner of the round
             checkMatchEnd() // Check if the match is over
+
+        case .continueAfterHand:
+            continueAfterHand()
 
         case .callEnvido:
             guard gameState.envidoState == .none else { return }  // Envido can only be called once per round
@@ -233,9 +220,20 @@ public class TrucoEngine {
         }
 
         if roundWinnerDetermined {
-            gameState.gamePhase = .roundOver
+            gameState.gamePhase = .roundSummary
             awardRoundPoints()
             checkMatchEnd()
+        }
+    }
+
+    private func continueAfterHand() {
+        checkRoundEnd() // See if the round is over
+
+        // If the round didn't end, start the next hand
+        if gameState.gamePhase != .roundSummary && gameState.gamePhase != .gameOver {
+            gameState.currentHandPlayedCards = []
+            startNewHand()
+            gameState.gamePhase = .playing
         }
     }
 
@@ -266,11 +264,6 @@ public class TrucoEngine {
     }
 
     private func startNewHand() {
-        // Only clear played cards if the round is not over
-        if gameState.gamePhase != .roundOver && gameState.gamePhase != .gameOver
-        {
-            gameState.currentHandPlayedCards = []
-        }
         // The player who won the last hand starts the next hand. If it was a tie, the mano player starts.
         if let lastOutcome = gameState.handOutcomes.last,
             let winnerId = lastOutcome.winnerId

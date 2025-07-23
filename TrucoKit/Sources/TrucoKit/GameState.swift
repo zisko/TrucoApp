@@ -207,7 +207,8 @@ public struct HandOutcome: Codable, Hashable {
 public enum GamePhase: String, Codable {
     case preGame
     case playing
-    case roundOver
+    case handOver
+    case roundSummary
     case gameOver
 }
 
