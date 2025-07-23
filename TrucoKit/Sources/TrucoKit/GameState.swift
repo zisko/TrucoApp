@@ -132,9 +132,12 @@ public struct HandOutcome: Codable, Hashable {
     public var envidoState: EnvidoState
     public var envidoCallerId: UUID?
     public var envidoPoints: Int // The points value of the current envido call
+    public var player1EnvidoPoints: Int?
+    public var player2EnvidoPoints: Int?
+    public var envidoWinnerId: UUID?
 
     enum CodingKeys: String, CodingKey {
-        case players, deck, currentPlayerIndex, gamePhase, roundWinner, matchWinner, currentHandPlayedCards, handOutcomes, manoPlayerId, trucoState, trucoCallerId, trucoPoints, envidoState, envidoCallerId, envidoPoints
+        case players, deck, currentPlayerIndex, gamePhase, roundWinner, matchWinner, currentHandPlayedCards, handOutcomes, manoPlayerId, trucoState, trucoCallerId, trucoPoints, envidoState, envidoCallerId, envidoPoints, player1EnvidoPoints, player2EnvidoPoints, envidoWinnerId
     }
 
     public required init(from decoder: Decoder) throws {
@@ -154,6 +157,9 @@ public struct HandOutcome: Codable, Hashable {
         self.envidoState = try container.decode(EnvidoState.self, forKey: .envidoState)
         self.envidoCallerId = try container.decode(UUID?.self, forKey: .envidoCallerId)
         self.envidoPoints = try container.decode(Int.self, forKey: .envidoPoints)
+        self.player1EnvidoPoints = try container.decode(Int?.self, forKey: .player1EnvidoPoints)
+        self.player2EnvidoPoints = try container.decode(Int?.self, forKey: .player2EnvidoPoints)
+        self.envidoWinnerId = try container.decode(UUID?.self, forKey: .envidoWinnerId)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -173,6 +179,9 @@ public struct HandOutcome: Codable, Hashable {
         try container.encode(envidoState, forKey: .envidoState)
         try container.encode(envidoCallerId, forKey: .envidoCallerId)
         try container.encode(envidoPoints, forKey: .envidoPoints)
+        try container.encode(player1EnvidoPoints, forKey: .player1EnvidoPoints)
+        try container.encode(player2EnvidoPoints, forKey: .player2EnvidoPoints)
+        try container.encode(envidoWinnerId, forKey: .envidoWinnerId)
     }
 
     public init() {
@@ -191,6 +200,9 @@ public struct HandOutcome: Codable, Hashable {
         self.envidoState = .none
         self.envidoCallerId = nil
         self.envidoPoints = 0
+        self.player1EnvidoPoints = nil
+        self.player2EnvidoPoints = nil
+        self.envidoWinnerId = nil
     }
 
     public static func newDeck() -> [Card] {
@@ -209,6 +221,7 @@ public enum GamePhase: String, Codable {
     case playing
     case handOver
     case roundSummary
+    case envidoSummary
     case gameOver
 }
 

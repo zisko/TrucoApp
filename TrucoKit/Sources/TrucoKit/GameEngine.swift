@@ -98,7 +98,15 @@ public class TrucoEngine {
         case .continueAfterHand:
             continueAfterHand()
 
+        case .continueAfterEnvido:
+            continueAfterEnvido()
+
         case .callEnvido:
+            // Rule: Envido can only be called before any cards are played in the round.
+            guard gameState.currentHandPlayedCards.isEmpty else {
+                print("Error: Envido can only be called before cards are played.")
+                return
+            }
             guard gameState.envidoState == .none else { return }  // Envido can only be called once per round
             gameState.envidoState = .envidoCalled
             gameState.envidoCallerId =
@@ -114,10 +122,7 @@ public class TrucoEngine {
 
         case .acceptEnvido:
             resolveEnvido()
-            gameState.envidoState = .accepted
-            
-            // The Envido interruption is over, so the turn goes back to the caller
-            gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
+            gameState.gamePhase = .envidoSummary // NEW: Pause to show Envido results
             print("Envido accepted!")
 
         case .rejectEnvido:
@@ -250,6 +255,21 @@ public class TrucoEngine {
         }
     }
 
+    private func continueAfterEnvido() {
+        // Clear the envido summary data
+        gameState.player1EnvidoPoints = nil
+        gameState.player2EnvidoPoints = nil
+        gameState.envidoWinnerId = nil
+        
+        // The Envido interruption is over, so the turn goes back to the original caller
+        if let callerId = gameState.envidoCallerId,
+           let callerIndex = gameState.players.firstIndex(where: { $0.id == callerId }) {
+            gameState.currentPlayerIndex = callerIndex
+        }
+        
+        gameState.gamePhase = .playing
+    }
+
     private func awardRoundPoints() {
         guard let winnerId = gameState.roundWinner,
               let winnerIndex = gameState.players.firstIndex(where: { $0.id == winnerId }) else { return }
@@ -367,19 +387,13 @@ public class TrucoEngine {
             print("error: attempted to resolve envido but it was never called")
             return
         }
-        guard
-            let player1 = gameState.players.first(where: {
-                $0.id == gameState.players[0].id
-            })
-        else { return }
-        guard
-            let player2 = gameState.players.first(where: {
-                $0.id == gameState.players[1].id
-            })
-        else { return }
+        guard let player1 = gameState.players.first, let player2 = gameState.players.last else { return }
 
         let player1EnvidoPoints = calculateEnvidoPoints(for: player1)
         let player2EnvidoPoints = calculateEnvidoPoints(for: player2)
+
+        gameState.player1EnvidoPoints = player1EnvidoPoints
+        gameState.player2EnvidoPoints = player2EnvidoPoints
 
         print("Player 1 Envido Points: \(player1EnvidoPoints)")
         print("Player 2 Envido Points: \(player2EnvidoPoints)")
@@ -393,20 +407,19 @@ public class TrucoEngine {
             // Tie in Envido: The player who is "mano" (started the round) wins the envido tie.
             winnerId = gameState.manoPlayerId
         }
+        
+        gameState.envidoWinnerId = winnerId
 
         if let winner = winnerId {
-            if let winnerIndex = gameState.players.firstIndex(where: {
-                $0.id == winner
-            }) {
+            if let winnerIndex = gameState.players.firstIndex(where: { $0.id == winner }) {
                 gameState.players[winnerIndex].score += gameState.envidoPoints
                 print(
                     "Envido winner: \(gameState.players[winnerIndex].name) gets \(gameState.envidoPoints) points."
                 )
             }
         }
-        // Reset envido state after resolution
-        gameState.envidoState = .none
-        gameState.envidoCallerId = nil
-        gameState.envidoPoints = 0
+        
+        // Mark envido as resolved, but don't reset points until after summary
+        gameState.envidoState = .accepted
     }
 }

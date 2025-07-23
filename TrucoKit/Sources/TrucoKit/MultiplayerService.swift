@@ -10,7 +10,8 @@ public enum GameMove: Codable {
     case acceptEnvido
     case rejectEnvido
     case dealNewHand
-    case continueAfterHand // New case to proceed after a hand summary
+    case continueAfterHand
+    case continueAfterEnvido
     case quit
 }
 

@@ -98,6 +98,13 @@ struct GameView: View {
             makeOpponentMove()
         }
     }
+
+    func continueAfterEnvido() {
+        gameEngine.handle(move: .continueAfterEnvido)
+        if !isLocalPlayerTurn && gameState.gamePhase == .playing {
+            makeOpponentMove()
+        }
+    }
     
     private func makeOpponentMove() {
         // Simulate thinking time
@@ -250,7 +257,7 @@ struct GameView: View {
                     }
                 }
             }
-            .blur(radius: gameState.gamePhase == .handOver || gameState.gamePhase == .roundSummary || gameState.gamePhase == .gameOver ? 10 : 0)
+            .blur(radius: gameState.gamePhase == .handOver || gameState.gamePhase == .roundSummary || gameState.gamePhase == .gameOver || gameState.gamePhase == .envidoSummary ? 10 : 0)
 
             // Overlays
             if gameState.gamePhase == .handOver {
@@ -264,6 +271,12 @@ struct GameView: View {
             if gameState.gamePhase == .roundSummary {
                 RoundSummaryView(gameState: gameState) {
                     startNewRound()
+                }
+            }
+            
+            if gameState.gamePhase == .envidoSummary {
+                EnvidoSummaryView(gameState: gameState) {
+                    continueAfterEnvido()
                 }
             }
             
