@@ -64,8 +64,12 @@ public class TrucoEngine {
             }
             gameState.trucoCallerId =
                 gameState.players[gameState.currentPlayerIndex].id
+            
+            // Pass the turn to the other player to respond
+            gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
+            
             print(
-                "Truco called by \(gameState.players[gameState.currentPlayerIndex].name). Current Truco points: \(gameState.trucoPoints)"
+                "Truco called by player. Current Truco points: \(gameState.trucoPoints)"
             )
 
         case .acceptTruco:
@@ -98,8 +102,12 @@ public class TrucoEngine {
             gameState.envidoCallerId =
                 gameState.players[gameState.currentPlayerIndex].id
             gameState.envidoPoints = 2  // Initial Envido value
+
+            // Pass the turn to the other player to respond
+            gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
+            
             print(
-                "Envido called by \(gameState.players[gameState.currentPlayerIndex].name). Current Envido points: \(gameState.envidoPoints)"
+                "Envido called by player. Current Envido points: \(gameState.envidoPoints)"
             )
 
         case .acceptEnvido:
