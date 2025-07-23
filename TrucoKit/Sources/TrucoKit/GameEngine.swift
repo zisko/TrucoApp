@@ -134,6 +134,7 @@ public class TrucoEngine {
                     print(
                         "Envido rejected! \(gameState.players[callerIndex].name) gets 1 point."
                     )
+                    checkMatchEnd() // Check for match winner
                 }
             }
             gameState.envidoState = .rejected
@@ -416,6 +417,7 @@ public class TrucoEngine {
                 print(
                     "Envido winner: \(gameState.players[winnerIndex].name) gets \(gameState.envidoPoints) points."
                 )
+                checkMatchEnd() // Check for match winner
             }
         }
         
