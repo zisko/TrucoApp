@@ -74,6 +74,8 @@ public class TrucoEngine {
 
         case .acceptTruco:
             gameState.trucoState = .accepted
+            // The Truco call is resolved, so the turn goes back to the caller to play their card.
+            gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
             print("Truco accepted!")
 
         case .rejectTruco:
@@ -113,6 +115,9 @@ public class TrucoEngine {
         case .acceptEnvido:
             resolveEnvido()
             gameState.envidoState = .accepted
+            
+            // The Envido interruption is over, so the turn goes back to the caller
+            gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
             print("Envido accepted!")
 
         case .rejectEnvido:
