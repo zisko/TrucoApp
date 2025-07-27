@@ -29,7 +29,10 @@ struct PlayingCardView: View {
             // Layer 2: Card Content (Rank and Suit)
             VStack {
                 HStack {
-                    CornerLabel(rank: card.rank.description, suitImageName: suitImageName)
+                    CornerLabel(
+                        rank: card.rank.description,
+                        suitImageName: suitImageName
+                    )
                     Spacer()
                 }
                 Spacer()
@@ -41,12 +44,17 @@ struct PlayingCardView: View {
                 Spacer()
                 HStack {
                     Spacer()
-                    CornerLabel(rank: card.rank.description, suitImageName: suitImageName)
-                        .rotationEffect(.degrees(180))
+                    CornerLabel(
+                        rank: card.rank.description,
+                        suitImageName: suitImageName
+                    )
+                    .rotationEffect(.degrees(180))
                 }
             }
             .padding(8)
         }
+        // lock the aspect ratio so the cards never look wonky.
+        .aspectRatio(contentMode: .fit)
         .onTapGesture {
             onTap?()
         }
@@ -62,6 +70,7 @@ struct CornerLabel: View {
         VStack(spacing: 2) {
             Text(rank)
                 .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(.black)
             Image(suitImageName)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
@@ -71,6 +80,10 @@ struct CornerLabel: View {
 }
 
 #Preview {
+    VStack {
+        PlayingCardView(card: Card(rank: .ace, suit: .espadas))
+            .frame(width: 100, height: 150)
+    }.frame(width: 200, height: 850)
     HStack {
         PlayingCardView(card: Card(rank: .ace, suit: .espadas))
             .frame(width: 100, height: 150)

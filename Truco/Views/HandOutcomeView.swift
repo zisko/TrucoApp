@@ -12,13 +12,15 @@ struct HandOutcomeView: View {
 
     private var outcomeDescription: String {
         guard let winnerId = outcome.winnerId,
-              let winningCard = outcome.winningCard,
-              let losingCard = outcome.losingCard else {
+            let winningCard = outcome.winningCard,
+            let losingCard = outcome.losingCard
+        else {
             return "It's a tie!"
         }
-        
+
         let winnerName = playerName(for: winnerId)
-        return "\(winnerName) wins with \(winningCard.rank.description) of \(winningCard.suit.rawValue) against \(losingCard.rank.description) of \(losingCard.suit.rawValue)."
+        return
+            "\(winnerName) wins with \(winningCard.rank.description) of \(winningCard.suit.rawValue) against \(losingCard.rank.description) of \(losingCard.suit.rawValue)."
     }
 
     var body: some View {
@@ -39,7 +41,7 @@ struct HandOutcomeView: View {
                             )
                     }
                 }
-                
+
                 if let losingCard = outcome.losingCard {
                     VStack {
                         Text("Loser")
@@ -72,4 +74,22 @@ struct HandOutcomeView: View {
         .foregroundColor(.white)
         .shadow(radius: 20)
     }
+}
+
+#Preview {
+    let winnerUUID = UUID()
+    let handOutcome = HandOutcome(
+        winnerId: winnerUUID,
+        winningCard: Card(rank: .ace, suit: .espadas),
+        losingCard: Card(rank: .five, suit: .copas)
+    )
+    let players: [Player] = [
+        Player(id: winnerUUID, name: "player1", hand: [], score: 20),
+        Player(id: UUID(), name: "player2", hand: [], score: 20),
+    ]
+    HandOutcomeView(
+        outcome: handOutcome,
+        players: [],
+        onContinue: {}
+    )
 }
