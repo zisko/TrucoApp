@@ -32,7 +32,7 @@ struct HandOutcomeView: View {
                     VStack {
                         Text("Winner")
                             .font(.headline)
-                        CardView(card: winningCard)
+                        PlayingCardView(card: winningCard)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10)
                                     .stroke(Color.green, lineWidth: 4)
@@ -44,7 +44,7 @@ struct HandOutcomeView: View {
                     VStack {
                         Text("Loser")
                             .font(.headline)
-                        CardView(card: losingCard)
+                        PlayingCardView(card: losingCard)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10)
                                     .stroke(Color.red, lineWidth: 4)

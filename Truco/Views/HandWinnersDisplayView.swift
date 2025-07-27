@@ -42,13 +42,13 @@ struct HandWinnersDisplayView: View {
 
                         ZStack {
                             if let losingCard = outcome.losingCard {
-                                CardView(card: losingCard)
+                                PlayingCardView(card: losingCard)
                                     .frame(width: 30, height: 45)
                                     .rotationEffect(.degrees(-5))
                                     .offset(x: -10)
                             }
                             if let winningCard = outcome.winningCard {
-                                CardView(card: winningCard)
+                                PlayingCardView(card: winningCard)
                                     .frame(width: 30, height: 45)
                             }
                         }

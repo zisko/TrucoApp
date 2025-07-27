@@ -8,9 +8,10 @@ struct HandView: View {
     var body: some View {
         HStack {
             ForEach(cards) { card in
-                CardView(card: card) {
+                PlayingCardView(card: card) {
                     onCardTap?(card)
                 }
+                .frame(width: 60, height: 90)
             }
         }
     }

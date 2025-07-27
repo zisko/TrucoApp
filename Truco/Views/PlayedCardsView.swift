@@ -10,7 +10,8 @@ struct PlayedCardsView: View {
                 VStack {
                     Text(playedCard.player.uuidString.prefix(4))
                         .font(.caption2)
-                    CardView(card: playedCard.card)
+                    PlayingCardView(card: playedCard.card)
+                        .frame(width: 60, height: 90)
                 }
             }
         }
