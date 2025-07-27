@@ -7,21 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		F5EF71FE2E29543A006C4CF0 /* Messages.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5EF71FD2E29543A006C4CF0 /* Messages.framework */; };
-		F5EF720A2E29543C006C4CF0 /* TrucoMessages.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F5EF71FB2E29543A006C4CF0 /* TrucoMessages.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		F5EF72CD2E29BF3C006C4CF0 /* TrucoKit in Frameworks */ = {isa = PBXBuildFile; productRef = F5EF72CC2E29BF3C006C4CF0 /* TrucoKit */; };
-		F5EF72CF2E29BF44006C4CF0 /* TrucoKit in Frameworks */ = {isa = PBXBuildFile; productRef = F5EF72CE2E29BF44006C4CF0 /* TrucoKit */; };
 /* End PBXBuildFile section */
-
-/* Begin PBXContainerItemProxy section */
-		F5EF72082E29543C006C4CF0 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = F51771DB2E25A23A006CC6F9 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = F5EF71FA2E29543A006C4CF0;
-			remoteInfo = TrucoMessages;
-		};
-/* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
 		F5EF720B2E29543C006C4CF0 /* Embed Foundation Extensions */ = {
@@ -30,7 +17,6 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				F5EF720A2E29543C006C4CF0 /* TrucoMessages.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -49,20 +35,9 @@
 
 /* Begin PBXFileReference section */
 		F51771E32E25A23A006CC6F9 /* Truco.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Truco.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		F5EF71FB2E29543A006C4CF0 /* TrucoMessages.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TrucoMessages.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		F5EF71FD2E29543A006C4CF0 /* Messages.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Messages.framework; path = System/Library/Frameworks/Messages.framework; sourceTree = SDKROOT; };
 		F5EF72102E295553006C4CF0 /* TrucoKit */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = TrucoKit; sourceTree = "<group>"; };
 /* End PBXFileReference section */
-
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		F5EF720E2E29543C006C4CF0 /* Exceptions for "TrucoMessages" folder in "TrucoMessages" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = F5EF71FA2E29543A006C4CF0 /* TrucoMessages */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		F51771E52E25A23A006CC6F9 /* Truco */ = {
@@ -72,9 +47,6 @@
 		};
 		F5EF71FF2E29543A006C4CF0 /* TrucoMessages */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				F5EF720E2E29543C006C4CF0 /* Exceptions for "TrucoMessages" folder in "TrucoMessages" target */,
-			);
 			path = TrucoMessages;
 			sourceTree = "<group>";
 		};
@@ -86,15 +58,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				F5EF72CD2E29BF3C006C4CF0 /* TrucoKit in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		F5EF71F82E29543A006C4CF0 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				F5EF71FE2E29543A006C4CF0 /* Messages.framework in Frameworks */,
-				F5EF72CF2E29BF44006C4CF0 /* TrucoKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -116,7 +79,6 @@
 			isa = PBXGroup;
 			children = (
 				F51771E32E25A23A006CC6F9 /* Truco.app */,
-				F5EF71FB2E29543A006C4CF0 /* TrucoMessages.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -145,7 +107,6 @@
 			buildRules = (
 			);
 			dependencies = (
-				F5EF72092E29543C006C4CF0 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				F51771E52E25A23A006CC6F9 /* Truco */,
@@ -158,29 +119,6 @@
 			productReference = F51771E32E25A23A006CC6F9 /* Truco.app */;
 			productType = "com.apple.product-type.application";
 		};
-		F5EF71FA2E29543A006C4CF0 /* TrucoMessages */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = F5EF720F2E29543C006C4CF0 /* Build configuration list for PBXNativeTarget "TrucoMessages" */;
-			buildPhases = (
-				F5EF71F72E29543A006C4CF0 /* Sources */,
-				F5EF71F82E29543A006C4CF0 /* Frameworks */,
-				F5EF71F92E29543A006C4CF0 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				F5EF71FF2E29543A006C4CF0 /* TrucoMessages */,
-			);
-			name = TrucoMessages;
-			packageProductDependencies = (
-				F5EF72CE2E29BF44006C4CF0 /* TrucoKit */,
-			);
-			productName = TrucoMessages;
-			productReference = F5EF71FB2E29543A006C4CF0 /* TrucoMessages.appex */;
-			productType = "com.apple.product-type.app-extension.messages";
-		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -192,9 +130,6 @@
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					F51771E22E25A23A006CC6F9 = {
-						CreatedOnToolsVersion = 26.0;
-					};
-					F5EF71FA2E29543A006C4CF0 = {
 						CreatedOnToolsVersion = 26.0;
 					};
 				};
@@ -217,20 +152,12 @@
 			projectRoot = "";
 			targets = (
 				F51771E22E25A23A006CC6F9 /* Truco */,
-				F5EF71FA2E29543A006C4CF0 /* TrucoMessages */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		F51771E12E25A23A006CC6F9 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		F5EF71F92E29543A006C4CF0 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -247,22 +174,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		F5EF71F72E29543A006C4CF0 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXTargetDependency section */
-		F5EF72092E29543C006C4CF0 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = F5EF71FA2E29543A006C4CF0 /* TrucoMessages */;
-			targetProxy = F5EF72082E29543C006C4CF0 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		F51771EE2E25A23B006CC6F9 /* Debug */ = {
@@ -450,64 +362,6 @@
 			};
 			name = Release;
 		};
-		F5EF720C2E29543C006C4CF0 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = "iMessage App Icon";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 2XC9JE84D8;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = TrucoMessages/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = TrucoMessages;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = zisko.Truco.TrucoMessages;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		F5EF720D2E29543C006C4CF0 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = "iMessage App Icon";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 2XC9JE84D8;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = TrucoMessages/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = TrucoMessages;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = zisko.Truco.TrucoMessages;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -529,15 +383,6 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		F5EF720F2E29543C006C4CF0 /* Build configuration list for PBXNativeTarget "TrucoMessages" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				F5EF720C2E29543C006C4CF0 /* Debug */,
-				F5EF720D2E29543C006C4CF0 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -549,10 +394,6 @@
 
 /* Begin XCSwiftPackageProductDependency section */
 		F5EF72CC2E29BF3C006C4CF0 /* TrucoKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = TrucoKit;
-		};
-		F5EF72CE2E29BF44006C4CF0 /* TrucoKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = TrucoKit;
 		};
