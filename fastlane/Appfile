@@ -1,0 +1,12 @@
+# Appfile
+
+# The bundle identifier of your app
+app_identifier("zisko.Truco")
+
+# Your Apple ID
+apple_id("jacobmizraji@gmail.com")
+
+# Your Team ID
+# You can find your Team ID in the Apple Developer portal under "Membership"
+itc_team_id "2XC9JE84D8"
+team_id "2XC9JE84D8"

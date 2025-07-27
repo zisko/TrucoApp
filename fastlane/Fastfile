@@ -1,0 +1,34 @@
+# Fastfile
+default_platform(:ios)
+
+platform :ios do
+  desc "Push a new release build to TestFlight"
+  lane :release do
+    # Ensure we have the latest App Store Connect API key
+    # This is the recommended authentication method.
+    app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_API_ISSUER_ID"],
+      key_filepath: ENV["APP_STORE_CONNECT_API_KEY_FILEPATH"],
+      duration: 1200, # optional
+      in_house: false # optional
+    )
+
+    # Increment the build number to ensure a new build can be uploaded.
+    increment_build_number(
+      xcodeproj: "Truco.xcodeproj"
+    )
+
+    # Build the app.
+    build_app(
+      workspace: "Truco.xcworkspace",
+      scheme: "Truco",
+      clean: true
+    )
+
+    # Upload the build to TestFlight.
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true # Recommended for CI
+    )
+  end
+end

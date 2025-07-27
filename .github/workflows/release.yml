@@ -1,0 +1,33 @@
+# .github/workflows/release.yml
+name: Release to TestFlight
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger on tags like v1.0, v2.3.4
+
+jobs:
+  build-and-deploy:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby and Bundler
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.0' # Or a version compatible with your setup
+          bundler-cache: true
+
+      - name: Decode and install App Store Connect API Key
+        run: |
+          mkdir -p ~/private_keys
+          echo -n "${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}" | base64 --decode --output ~/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
+        
+      - name: Run Fastlane release lane
+        run: bundle exec fastlane release
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_FILEPATH: "~/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8"
