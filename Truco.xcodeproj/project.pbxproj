@@ -35,6 +35,7 @@
 
 /* Begin PBXFileReference section */
 		F51771E32E25A23A006CC6F9 /* Truco.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Truco.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F5C1551A2E396BB400BF8EDB /* Truco.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = Truco.xctestplan; sourceTree = "<group>"; };
 		F5EF71FD2E29543A006C4CF0 /* Messages.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Messages.framework; path = System/Library/Frameworks/Messages.framework; sourceTree = SDKROOT; };
 		F5EF72102E295553006C4CF0 /* TrucoKit */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = TrucoKit; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -67,6 +68,7 @@
 		F51771DA2E25A23A006CC6F9 = {
 			isa = PBXGroup;
 			children = (
+				F5C1551A2E396BB400BF8EDB /* Truco.xctestplan */,
 				F5EF72102E295553006C4CF0 /* TrucoKit */,
 				F51771E52E25A23A006CC6F9 /* Truco */,
 				F5EF71FF2E29543A006C4CF0 /* TrucoMessages */,

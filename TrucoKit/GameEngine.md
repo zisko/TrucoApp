@@ -30,6 +30,8 @@ Transitions between states are triggered by the `TrucoEngine` in response to spe
 | ---------------- | ------------------------------ | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | `.preGame`       | `dealInitialCards()`           | `.playing`       | The game starts, cards are dealt, and the first player's turn begins.                                                                  |
 | `.playing`       | `.playCard` (second card)      | `.handOver`      | A hand is completed. The engine determines the winner and pauses the game to show the outcome.                                         |
+| `.playing`       | `.acceptEnvido`                | `.envidoSummary` | A player accepts an Envido call. The engine resolves the Envido points and pauses to show the result.                               |
+| `.envidoSummary` | `.continueAfterEnvido`         | `.playing`       | The user continues after seeing the Envido result, and the game returns to the active playing state.                                   |
 | `.handOver`      | `.continueAfterHand`           | `.playing`       | The user continues after seeing the hand result. The engine determines the round is not over and starts the next hand.                 |
 | `.handOver`      | `.continueAfterHand`           | `.roundSummary`  | The user continues, and the engine determines that the round *is* over. It calculates points and moves to the round summary.          |
 | `.roundSummary`  | `startNewRound()`              | `.playing`       | The user is ready to proceed. The engine resets the board for a new round and deals new cards.                                         |

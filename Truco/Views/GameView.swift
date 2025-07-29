@@ -35,7 +35,7 @@ struct GameView: View {
         gameEngine.dealInitialCards(player1Id: localPlayerId, player2Id: UUID())
         print("dealInitialCards - isLocalPlayerTurn: \(isLocalPlayerTurn), gamePhase: \(gameState.gamePhase)")
         if !isLocalPlayerTurn && gameState.gamePhase == .playing {
-            makeOpponentMove()
+            gameEngine.makeOpponentMove()
         }
     }
 
@@ -44,7 +44,7 @@ struct GameView: View {
             gameEngine.handle(move: .playCard(card))
             // After the local player plays, if it's now the opponent's turn, trigger their move.
             if !isLocalPlayerTurn {
-                makeOpponentMove()
+                gameEngine.makeOpponentMove()
             }
         }
     }
@@ -52,14 +52,14 @@ struct GameView: View {
     func callTruco() {
         gameEngine.handle(move: .callTruco)
         if !isLocalPlayerTurn && gameState.gamePhase == .playing {
-            makeOpponentMove()
+            gameEngine.makeOpponentMove()
         }
     }
 
     func acceptTruco() {
         gameEngine.handle(move: .acceptTruco)
         if !isLocalPlayerTurn && gameState.gamePhase == .playing {
-            makeOpponentMove()
+            gameEngine.makeOpponentMove()
         }
     }
 
@@ -70,14 +70,14 @@ struct GameView: View {
     func callEnvido() {
         gameEngine.handle(move: .callEnvido)
         if !isLocalPlayerTurn && gameState.gamePhase == .playing {
-            makeOpponentMove()
+            gameEngine.makeOpponentMove()
         }
     }
 
     func acceptEnvido() {
         gameEngine.handle(move: .acceptEnvido)
         if !isLocalPlayerTurn && gameState.gamePhase == .playing {
-            makeOpponentMove()
+            gameEngine.makeOpponentMove()
         }
     }
 
@@ -88,46 +88,21 @@ struct GameView: View {
     func startNewRound() {
         gameEngine.startNewRound()
         if !isLocalPlayerTurn && gameState.gamePhase == .playing {
-            makeOpponentMove()
+            gameEngine.makeOpponentMove()
         }
     }
 
     func continueAfterHand() {
         gameEngine.handle(move: .continueAfterHand)
         if !isLocalPlayerTurn && gameState.gamePhase == .playing {
-            makeOpponentMove()
+            gameEngine.makeOpponentMove()
         }
     }
 
     func continueAfterEnvido() {
         gameEngine.handle(move: .continueAfterEnvido)
         if !isLocalPlayerTurn && gameState.gamePhase == .playing {
-            makeOpponentMove()
-        }
-    }
-
-    private func makeOpponentMove() {
-        // Simulate thinking time
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            guard !self.isLocalPlayerTurn else { return }
-
-            // 1. Respond to Truco call
-            if self.gameState.trucoState == .trucoCalled && self.gameState.trucoCallerId == self.localPlayerId {
-                self.gameEngine.handle(move: .acceptTruco)
-                return
-            }
-
-            // 2. Respond to Envido call
-            if self.gameState.envidoState == .envidoCalled && self.gameState.envidoCallerId == self.localPlayerId {
-                self.gameEngine.handle(move: .acceptEnvido)
-                return
-            }
-
-            // 3. Play a card
-            guard let opponent = self.gameState.players.first(where: { $0.id != self.localPlayerId }) else { return }
-            if let randomCard = opponent.hand.randomElement() {
-                self.gameEngine.handle(move: .playCard(randomCard))
-            }
+            gameEngine.makeOpponentMove()
         }
     }
 

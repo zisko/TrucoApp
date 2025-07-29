@@ -451,4 +451,51 @@ public class TrucoEngine {
         // Mark envido as resolved, but don't reset points until after summary
         gameState.envidoState = .accepted
     }
+
+    public func makeOpponentMove() {
+        let cpuPlayer = CPUPlayer(personality: .balanced) // We can make this configurable later
+
+        // 1. Respond to Truco call
+        if gameState.trucoState == .trucoCalled {
+            if Double.random(in: 0 ... 1) < cpuPlayer.acceptBetChance {
+                handle(move: .acceptTruco)
+            } else {
+                handle(move: .rejectTruco)
+            }
+            return
+        }
+
+        // 2. Respond to Envido call
+        if gameState.envidoState == .envidoCalled {
+            if Double.random(in: 0 ... 1) < cpuPlayer.acceptBetChance {
+                handle(move: .acceptEnvido)
+            } else {
+                handle(move: .rejectEnvido)
+            }
+            return
+        }
+
+        // 3. Decide to call Envido
+        if gameState.handOutcomes.isEmpty, gameState.envidoState == .none {
+            if Double.random(in: 0 ... 1) < cpuPlayer.callEnvidoChance {
+                handle(move: .callEnvido)
+                return
+            }
+        }
+
+        // 4. Decide to call Truco
+        if gameState.trucoState == .none {
+            if Double.random(in: 0 ... 1) < cpuPlayer.callTrucoChance {
+                handle(move: .callTruco)
+                return
+            }
+        }
+
+        // 5. Play a card (default action)
+        if let opponent = gameState.players.first(where: { $0.id == gameState.players[gameState.currentPlayerIndex].id }),
+           let randomCard = opponent.hand.randomElement()
+        {
+            handle(move: .playCard(randomCard))
+        }
+    }
 }
