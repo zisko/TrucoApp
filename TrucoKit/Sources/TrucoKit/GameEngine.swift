@@ -11,7 +11,7 @@ public class TrucoEngine {
         print("Handling move: \(move)")
 
         switch move {
-        case .playCard(let card):
+        case let .playCard(card):
             guard gameState.gamePhase == .playing else { return }
             guard
                 var currentPlayer = gameState.players.first(where: {
@@ -41,11 +41,12 @@ public class TrucoEngine {
                     // Only one card played, switch turns
                     gameState.currentPlayerIndex =
                         (gameState.currentPlayerIndex + 1)
-                        % gameState.players.count
+                            % gameState.players.count
                 }
             }
+
         case .callTruco:
-            guard gameState.trucoState != .rejected else { return }  // Cannot call truco if already rejected
+            guard gameState.trucoState != .rejected else { return } // Cannot call truco if already rejected
 
             switch gameState.trucoState {
             case .none:
@@ -58,16 +59,16 @@ public class TrucoEngine {
                 gameState.trucoState = .valeCuatroCalled
                 gameState.trucoPoints = 4
             case .valeCuatroCalled:
-                return  // Cannot call truco beyond vale cuatro
+                return // Cannot call truco beyond vale cuatro
             case .accepted, .rejected:
-                return  // Should not happen if guard is correct
+                return // Should not happen if guard is correct
             }
             gameState.trucoCallerId =
                 gameState.players[gameState.currentPlayerIndex].id
-            
+
             // Pass the turn to the other player to respond
             gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
-            
+
             print(
                 "Truco called by player. Current Truco points: \(gameState.trucoPoints)"
             )
@@ -90,7 +91,7 @@ public class TrucoEngine {
                     )
                 }
             }
-            gameState.gamePhase = .roundSummary  // Round ends immediately
+            gameState.gamePhase = .roundSummary // Round ends immediately
             gameState.trucoState = .rejected
             awardRoundPoints() // Award points to the winner of the round
             checkMatchEnd() // Check if the match is over
@@ -102,20 +103,20 @@ public class TrucoEngine {
             continueAfterEnvido()
 
         case .callEnvido:
-            // Rule: Envido can only be called before any cards are played in the round.
-            guard gameState.currentHandPlayedCards.isEmpty else {
-                print("Error: Envido can only be called before cards are played.")
+            // Rule: Envido can only be called during the first hand.
+            guard gameState.handOutcomes.isEmpty else {
+                print("Error: Envido can only be called during the first hand.")
                 return
             }
-            guard gameState.envidoState == .none else { return }  // Envido can only be called once per round
+            guard gameState.envidoState == .none else { return } // Envido can only be called once per round
             gameState.envidoState = .envidoCalled
             gameState.envidoCallerId =
                 gameState.players[gameState.currentPlayerIndex].id
-            gameState.envidoPoints = 2  // Initial Envido value
+            gameState.envidoPoints = 2 // Initial Envido value
 
             // Pass the turn to the other player to respond
             gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
-            
+
             print(
                 "Envido called by player. Current Envido points: \(gameState.envidoPoints)"
             )
@@ -130,7 +131,7 @@ public class TrucoEngine {
                 if let callerIndex = gameState.players.firstIndex(where: {
                     $0.id == callerId
                 }) {
-                    gameState.players[callerIndex].score += 1  // 1 point for rejected envido
+                    gameState.players[callerIndex].score += 1 // 1 point for rejected envido
                     print(
                         "Envido rejected! \(gameState.players[callerIndex].name) gets 1 point."
                     )
@@ -162,7 +163,7 @@ public class TrucoEngine {
         )
 
         // Deal 3 cards to each player
-        for _ in 0..<3 {
+        for _ in 0 ..< 3 {
             if let card = newDeck.popLast() {
                 player1.hand.append(card)
             }
@@ -171,21 +172,21 @@ public class TrucoEngine {
             }
         }
 
-        self.gameState.players = [player1, player2]
-        self.gameState.deck = newDeck
-        self.gameState.gamePhase = .playing
-        self.gameState.currentPlayerIndex = 0  // Player 1 starts
-        self.gameState.currentHandPlayedCards = []  // Clear played cards for new hand
-        self.gameState.handOutcomes = []  // Clear hand outcomes for new round
-        self.gameState.roundWinner = nil  // Clear round winner
-        self.gameState.matchWinner = nil // Clear match winner
-        self.gameState.manoPlayerId = player1Id  // Player 1 is mano for the first round
-        self.gameState.trucoState = .none  // Reset truco state
-        self.gameState.trucoCallerId = nil  // Reset truco caller
-        self.gameState.trucoPoints = 0 // Reset truco points
-        self.gameState.envidoState = .none  // Reset envido state
-        self.gameState.envidoCallerId = nil  // Reset envido caller
-        self.gameState.envidoPoints = 0  // Reset envido points
+        gameState.players = [player1, player2]
+        gameState.deck = newDeck
+        gameState.gamePhase = .playing
+        gameState.currentPlayerIndex = 0 // Player 1 starts
+        gameState.currentHandPlayedCards = [] // Clear played cards for new hand
+        gameState.handOutcomes = [] // Clear hand outcomes for new round
+        gameState.roundWinner = nil // Clear round winner
+        gameState.matchWinner = nil // Clear match winner
+        gameState.manoPlayerId = player1Id // Player 1 is mano for the first round
+        gameState.trucoState = .none // Reset truco state
+        gameState.trucoCallerId = nil // Reset truco caller
+        gameState.trucoPoints = 0 // Reset truco points
+        gameState.envidoState = .none // Reset envido state
+        gameState.envidoCallerId = nil // Reset envido caller
+        gameState.envidoPoints = 0 // Reset envido points
     }
 
     private func determineHandOutcome() -> HandOutcome {
@@ -249,7 +250,7 @@ public class TrucoEngine {
         checkRoundEnd() // See if the round is over
 
         // If the round didn't end, start the next hand
-        if gameState.gamePhase != .roundSummary && gameState.gamePhase != .gameOver {
+        if gameState.gamePhase != .roundSummary, gameState.gamePhase != .gameOver {
             gameState.currentHandPlayedCards = []
             startNewHand()
             gameState.gamePhase = .playing
@@ -261,13 +262,14 @@ public class TrucoEngine {
         gameState.player1EnvidoPoints = nil
         gameState.player2EnvidoPoints = nil
         gameState.envidoWinnerId = nil
-        
+
         // The Envido interruption is over, so the turn goes back to the original caller
         if let callerId = gameState.envidoCallerId,
-           let callerIndex = gameState.players.firstIndex(where: { $0.id == callerId }) {
+           let callerIndex = gameState.players.firstIndex(where: { $0.id == callerId })
+        {
             gameState.currentPlayerIndex = callerIndex
         }
-        
+
         gameState.gamePhase = .playing
     }
 
@@ -300,7 +302,7 @@ public class TrucoEngine {
     private func startNewHand() {
         // The player who won the last hand starts the next hand. If it was a tie, the mano player starts.
         if let lastOutcome = gameState.handOutcomes.last,
-            let winnerId = lastOutcome.winnerId
+           let winnerId = lastOutcome.winnerId
         {
             gameState.currentPlayerIndex =
                 gameState.players.firstIndex(where: { $0.id == winnerId }) ?? 0
@@ -322,12 +324,12 @@ public class TrucoEngine {
         gameState.handOutcomes = []
         gameState.roundWinner = nil
         gameState.gamePhase = .playing
-        gameState.trucoState = .none  // Reset truco state
-        gameState.trucoCallerId = nil  // Reset truco caller
+        gameState.trucoState = .none // Reset truco state
+        gameState.trucoCallerId = nil // Reset truco caller
         gameState.trucoPoints = 0
-        gameState.envidoState = .none  // Reset envido state
-        gameState.envidoCallerId = nil  // Reset envido caller
-        gameState.envidoPoints = 0  // Reset envido points
+        gameState.envidoState = .none // Reset envido state
+        gameState.envidoCallerId = nil // Reset envido caller
+        gameState.envidoPoints = 0 // Reset envido points
 
         // Determine new mano player (alternates each round)
         if let currentManoIndex = gameState.players.firstIndex(where: {
@@ -335,7 +337,7 @@ public class TrucoEngine {
         }) {
             let nextManoIndex = (currentManoIndex + 1) % gameState.players.count
             gameState.manoPlayerId = gameState.players[nextManoIndex].id
-            gameState.currentPlayerIndex = nextManoIndex  // New mano starts the round
+            gameState.currentPlayerIndex = nextManoIndex // New mano starts the round
         } else {
             // Fallback if mano not found, assign to first player
             gameState.manoPlayerId = gameState.players.first?.id
@@ -345,9 +347,9 @@ public class TrucoEngine {
         // Re-deal cards
         var newDeck = GameState.newDeck()
         newDeck.shuffle()
-        for i in 0..<gameState.players.count {
-            gameState.players[i].hand = []  // Clear old hands
-            for _ in 0..<3 {
+        for i in 0 ..< gameState.players.count {
+            gameState.players[i].hand = [] // Clear old hands
+            for _ in 0 ..< 3 {
                 if let card = newDeck.popLast() {
                     gameState.players[i].hand.append(card)
                 }
@@ -370,7 +372,7 @@ public class TrucoEngine {
                 if sortedCards.count >= 2 {
                     let points =
                         sortedCards.suffix(2).reduce(0) { $0 + $1.envidoValue }
-                        + 20
+                            + 20
                     maxPoints = max(maxPoints, points)
                 }
             }
@@ -408,7 +410,7 @@ public class TrucoEngine {
             // Tie in Envido: The player who is "mano" (started the round) wins the envido tie.
             winnerId = gameState.manoPlayerId
         }
-        
+
         gameState.envidoWinnerId = winnerId
 
         if let winner = winnerId {
@@ -420,7 +422,7 @@ public class TrucoEngine {
                 checkMatchEnd() // Check for match winner
             }
         }
-        
+
         // Mark envido as resolved, but don't reset points until after summary
         gameState.envidoState = .accepted
     }
