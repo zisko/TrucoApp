@@ -5,17 +5,24 @@ import PackageDescription
 let package = Package(
     name: "TrucoKit",
     platforms: [
-        .iOS(.v17)
+        .iOS(.v17),
+        .macOS(.v14),
     ],
     products: [
         .library(
             name: "TrucoKit",
-            targets: ["TrucoKit"]),
+            targets: ["TrucoKit"]
+        ),
     ],
     dependencies: [],
     targets: [
         .target(
             name: "TrucoKit",
-            dependencies: []),
+            dependencies: []
+        ),
+        .testTarget(
+            name: "TrucoKitTests",
+            dependencies: ["TrucoKit"]
+        ),
     ]
 )
