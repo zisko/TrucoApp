@@ -43,15 +43,16 @@ struct HandWinnersDisplayView: View {
                         ZStack {
                             if let losingCard = outcome.losingCard {
                                 PlayingCardView(card: losingCard)
-                                    .frame(width: 30, height: 45)
+                                    .scaleEffect(0.5)
                                     .rotationEffect(.degrees(-5))
-                                    .offset(x: -10)
+                                    .offset(x: -15)
                             }
                             if let winningCard = outcome.winningCard {
                                 PlayingCardView(card: winningCard)
-                                    .frame(width: 30, height: 45)
+                                    .scaleEffect(0.5)
                             }
                         }
+                        .padding(.leading, -20) // Adjust padding to bring cards closer to text
                     }
                     .padding(.vertical, 2)
                 }
@@ -68,7 +69,7 @@ struct HandWinnersDisplayView: View {
 #Preview {
     struct PreviewWrapper: View {
         @State private var isExpanded = true
-        
+
         let player1 = Player(id: UUID(), name: "Alice", hand: [], score: 0)
         let player2 = Player(id: UUID(), name: "Bob", hand: [], score: 0)
 
@@ -83,7 +84,7 @@ struct HandWinnersDisplayView: View {
                 handOutcomes: [
                     HandOutcome(winnerId: player1.id, winningCard: card1, losingCard: card2),
                     HandOutcome(winnerId: player2.id, winningCard: card4, losingCard: card3),
-                    HandOutcome(winnerId: nil, winningCard: card1, losingCard: card1) // Tie example
+                    HandOutcome(winnerId: nil, winningCard: card1, losingCard: card1), // Tie example
                 ],
                 players: [player1, player2]
             )
