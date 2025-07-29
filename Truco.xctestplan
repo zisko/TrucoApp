@@ -1,0 +1,30 @@
+{
+  "configurations" : [
+    {
+      "id" : "195074B8-C71A-4C3B-BF6F-75F45E6F4005",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : false,
+    "performanceAntipatternCheckerEnabled" : true,
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:Truco.xcodeproj",
+      "identifier" : "F51771E22E25A23A006CC6F9",
+      "name" : "Truco"
+    }
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:TrucoKit",
+        "identifier" : "TrucoKitTests",
+        "name" : "TrucoKitTests"
+      }
+    }
+  ],
+  "version" : 1
+}
