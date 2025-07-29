@@ -7,6 +7,8 @@ public enum GameMove: Codable {
     case acceptTruco
     case rejectTruco
     case callEnvido
+    case callRealEnvido
+    case callFaltaEnvido
     case acceptEnvido
     case rejectEnvido
     case dealNewHand

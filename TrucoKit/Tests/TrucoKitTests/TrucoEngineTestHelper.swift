@@ -14,7 +14,7 @@ class TrucoEngineTestHelper {
     }
 
     @discardableResult
-    func createNewGame(player1Hand: [Card], player2Hand: [Card]) -> GameState {
+    func createNewGame(player1Hand: [Card], player2Hand: [Card], player1Score: Int = 0, player2Score: Int = 0) -> GameState {
         let state = GameState()
         gameState = state
         engine = TrucoEngine(gameState: state)
@@ -23,8 +23,8 @@ class TrucoEngineTestHelper {
         let player2Id = UUID()
 
         state.players = [
-            Player(id: player1Id, name: "Player 1", hand: player1Hand, score: 0),
-            Player(id: player2Id, name: "Player 2", hand: player2Hand, score: 0),
+            Player(id: player1Id, name: "Player 1", hand: player1Hand, score: player1Score),
+            Player(id: player2Id, name: "Player 2", hand: player2Hand, score: player2Score),
         ]
 
         state.manoPlayerId = player1Id

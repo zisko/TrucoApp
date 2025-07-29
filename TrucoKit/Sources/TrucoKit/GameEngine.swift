@@ -95,23 +95,51 @@ public class TrucoEngine {
             continueAfterEnvido()
 
         case .callEnvido:
-            // Rule: Envido can only be called during the first hand.
-            guard gameState.handOutcomes.isEmpty else {
-                print("Error: Envido can only be called during the first hand.")
-                return
-            }
-            guard gameState.envidoState == .none else { return } // Envido can only be called once per round
-            gameState.envidoState = .envidoCalled
-            gameState.envidoCallerId =
-                gameState.players[gameState.currentPlayerIndex].id
-            gameState.envidoPoints = 2 // Initial Envido value
+            guard gameState.handOutcomes.isEmpty else { return }
+            let currentPlayerId = gameState.players[gameState.currentPlayerIndex].id
+            if gameState.envidoCallerId == currentPlayerId { return }
 
-            // Pass the turn to the other player to respond
+            switch gameState.envidoState {
+            case .none:
+                gameState.envidoState = .envidoCalled
+                gameState.envidoPoints = 2
+            case .envidoCalled:
+                gameState.envidoState = .envidoEnvidoCalled
+                gameState.envidoPoints = 4
+            default:
+                return // Invalid state to call Envido
+            }
+
+            gameState.envidoCallerId = currentPlayerId
             gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
 
-            print(
-                "Envido called by player. Current Envido points: \(gameState.envidoPoints)"
-            )
+        case .callRealEnvido:
+            guard gameState.handOutcomes.isEmpty else { return }
+            let currentPlayerId = gameState.players[gameState.currentPlayerIndex].id
+            if gameState.envidoCallerId == currentPlayerId { return }
+
+            guard gameState.envidoState == .none || gameState.envidoState == .envidoCalled else { return }
+
+            let basePoints = (gameState.envidoState == .envidoCalled) ? gameState.envidoPoints : 0
+            gameState.envidoState = .realEnvidoCalled
+            gameState.envidoPoints = basePoints + 3
+            gameState.envidoCallerId = currentPlayerId
+            gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
+
+        case .callFaltaEnvido:
+            guard gameState.handOutcomes.isEmpty else { return }
+            let currentPlayerId = gameState.players[gameState.currentPlayerIndex].id
+            if gameState.envidoCallerId == currentPlayerId { return }
+
+            guard gameState.envidoState == .none || gameState.envidoState == .envidoCalled || gameState.envidoState == .realEnvidoCalled || gameState.envidoState == .envidoEnvidoCalled else { return }
+
+            let basePoints = gameState.envidoPoints
+            gameState.envidoState = .faltaEnvidoCalled
+            let opponentScore = gameState.players.first(where: { $0.id != currentPlayerId })?.score ?? 0
+            let faltaPoints = 30 - opponentScore
+            gameState.envidoPoints = basePoints + faltaPoints
+            gameState.envidoCallerId = currentPlayerId
+            gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
 
         case .acceptEnvido:
             resolveEnvido()
@@ -123,9 +151,14 @@ public class TrucoEngine {
                 if let callerIndex = gameState.players.firstIndex(where: {
                     $0.id == callerId
                 }) {
-                    gameState.players[callerIndex].score += 1 // 1 point for rejected envido
+                    var pointsToAward = 1
+                    if gameState.envidoState == .realEnvidoCalled { pointsToAward = 2 }
+                    if gameState.envidoState == .envidoEnvidoCalled { pointsToAward = 2 }
+                    // Falta Envido rejection is more complex, but 1 is a common rule if not accepted.
+
+                    gameState.players[callerIndex].score += pointsToAward
                     print(
-                        "Envido rejected! \(gameState.players[callerIndex].name) gets 1 point."
+                        "Envido rejected! \(gameState.players[callerIndex].name) gets \(pointsToAward) point(s)."
                     )
                     checkMatchEnd() // Check for match winner
                 }

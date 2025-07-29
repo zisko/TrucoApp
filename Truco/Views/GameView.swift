@@ -273,18 +273,25 @@ struct GameView: View {
                             Button("Accept Envido") {
                                 acceptEnvido()
                             }
-                            .padding()
-                            .background(Color.green)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
+                            .buttonStyle(.borderedProminent)
 
                             Button("Reject Envido") {
                                 rejectEnvido()
                             }
-                            .padding()
-                            .background(Color.red)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
+                            .buttonStyle(.bordered)
+                            .tint(.red)
+
+                            Button("Real Envido") {
+                                gameEngine.handle(move: .callRealEnvido)
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(.green)
+
+                            Button("Falta Envido") {
+                                gameEngine.handle(move: .callFaltaEnvido)
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(.yellow)
                         }
                     }
                 }
