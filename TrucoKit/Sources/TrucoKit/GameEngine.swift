@@ -46,55 +46,47 @@ public class TrucoEngine {
             }
 
         case .callTruco:
-            guard gameState.trucoState != .rejected else { return } // Cannot call truco if already rejected
+            guard gameState.trucoState != .rejected else { return }
+
+            let currentPlayerId = gameState.players[gameState.currentPlayerIndex].id
+
+            // A player cannot raise their own bet
+            if gameState.trucoCallerId == currentPlayerId { return }
 
             switch gameState.trucoState {
             case .none:
                 gameState.trucoState = .trucoCalled
                 gameState.trucoPoints = 2
-            case .trucoCalled:
+            case .trucoCalled, .accepted:
                 gameState.trucoState = .retrucoCalled
                 gameState.trucoPoints = 3
             case .retrucoCalled:
                 gameState.trucoState = .valeCuatroCalled
                 gameState.trucoPoints = 4
-            case .valeCuatroCalled:
-                return // Cannot call truco beyond vale cuatro
-            case .accepted, .rejected:
-                return // Should not happen if guard is correct
+            default:
+                return // Invalid state to call truco
             }
-            gameState.trucoCallerId =
-                gameState.players[gameState.currentPlayerIndex].id
 
-            // Pass the turn to the other player to respond
+            gameState.trucoCallerId = currentPlayerId
             gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
-
-            print(
-                "Truco called by player. Current Truco points: \(gameState.trucoPoints)"
-            )
 
         case .acceptTruco:
             gameState.trucoState = .accepted
-            // The Truco call is resolved, so the turn goes back to the caller to play their card.
-            gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
+            if let callerIndex = gameState.players.firstIndex(where: { $0.id == gameState.trucoCallerId }) {
+                gameState.currentPlayerIndex = callerIndex
+            }
             print("Truco accepted!")
 
         case .rejectTruco:
             if let callerId = gameState.trucoCallerId {
-                if let callerIndex = gameState.players.firstIndex(where: {
-                    $0.id == callerId
-                }) {
-                    let points = (gameState.trucoPoints > 0) ? (gameState.trucoPoints - 1) : 1
-                    gameState.players[callerIndex].score += points
-                    print(
-                        "Truco rejected! \(gameState.players[callerIndex].name) gets \(points) points."
-                    )
+                if let callerIndex = gameState.players.firstIndex(where: { $0.id == callerId }) {
+                    let pointsAwarded = (gameState.trucoPoints > 1) ? gameState.trucoPoints - 1 : 1
+                    gameState.players[callerIndex].score += pointsAwarded
                 }
             }
-            gameState.gamePhase = .roundSummary // Round ends immediately
+            gameState.gamePhase = .roundSummary
             gameState.trucoState = .rejected
-            awardRoundPoints() // Award points to the winner of the round
-            checkMatchEnd() // Check if the match is over
+            checkMatchEnd()
 
         case .continueAfterHand:
             continueAfterHand()
@@ -404,7 +396,7 @@ public class TrucoEngine {
         var winnerId: UUID?
         if player1EnvidoPoints > player2EnvidoPoints {
             winnerId = player1.id
-        } else if player2EnvidoPoints > player1EnvidoPoints {
+        } else if player2EnvidoPoints > player2EnvidoPoints {
             winnerId = player2.id
         } else {
             // Tie in Envido: The player who is "mano" (started the round) wins the envido tie.

@@ -1,6 +1,6 @@
+import Observation
 import SwiftUI
 import TrucoKit
-import Observation
 
 struct GameView: View {
     @State var gameState: GameState
@@ -105,7 +105,7 @@ struct GameView: View {
             makeOpponentMove()
         }
     }
-    
+
     private func makeOpponentMove() {
         // Simulate thinking time
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
@@ -116,7 +116,7 @@ struct GameView: View {
                 self.gameEngine.handle(move: .acceptTruco)
                 return
             }
-            
+
             // 2. Respond to Envido call
             if self.gameState.envidoState == .envidoCalled && self.gameState.envidoCallerId == self.localPlayerId {
                 self.gameEngine.handle(move: .acceptEnvido)
@@ -203,7 +203,7 @@ struct GameView: View {
                 // Truco and Envido Buttons
                 HStack {
                     if isLocalPlayerTurn && gameState.gamePhase == .playing {
-                        if gameEngine.gameState.trucoState == .none {
+                        if gameEngine.gameState.trucoState == .none || (gameEngine.gameState.trucoState == .accepted && gameEngine.gameState.trucoCallerId == localPlayerId) {
                             Button("Truco") {
                                 callTruco()
                             }
@@ -227,8 +227,40 @@ struct GameView: View {
                             .background(Color.red)
                             .foregroundColor(.white)
                             .cornerRadius(10)
+
+                            Button("Retruco") {
+                                gameEngine.handle(move: .callTruco)
+                            }
+                            .padding()
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                        } else if gameEngine.gameState.trucoState == .retrucoCalled && gameEngine.gameState.trucoCallerId != localPlayerId {
+                            Button("Accept Retruco") {
+                                acceptTruco()
+                            }
+                            .padding()
+                            .background(Color.green)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+
+                            Button("Reject Retruco") {
+                                rejectTruco()
+                            }
+                            .padding()
+                            .background(Color.red)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+
+                            Button("Vale Cuatro") {
+                                gameEngine.handle(move: .callTruco)
+                            }
+                            .padding()
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
                         }
-                        
+
                         if gameEngine.gameState.envidoState == .none {
                             Button("Envido") {
                                 callEnvido()
@@ -245,7 +277,7 @@ struct GameView: View {
                             .background(Color.green)
                             .foregroundColor(.white)
                             .cornerRadius(10)
-                            
+
                             Button("Reject Envido") {
                                 rejectEnvido()
                             }
@@ -267,19 +299,19 @@ struct GameView: View {
                     }
                 }
             }
-            
+
             if gameState.gamePhase == .roundSummary {
                 RoundSummaryView(gameState: gameState) {
                     startNewRound()
                 }
             }
-            
+
             if gameState.gamePhase == .envidoSummary {
                 EnvidoSummaryView(gameState: gameState) {
                     continueAfterEnvido()
                 }
             }
-            
+
             if gameState.gamePhase == .gameOver {
                 VStack {
                     Text("Match Over!")
