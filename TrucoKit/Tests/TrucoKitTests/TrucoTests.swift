@@ -119,4 +119,44 @@ final class TrucoTests: XCTestCase {
         // Assert
         XCTAssertEqual(helper.player1.score, 3, "Player 1 should get 3 points for the rejected Vale Cuatro.")
     }
+
+    func test_trucoCanBeCalled_atAnyPointInTheHand() {
+        // Arrange
+        let player1Hand = [Card(rank: .ace, suit: .espadas), Card(rank: .two, suit: .bastos), Card(rank: .three, suit: .oros)]
+        let player2Hand = [Card(rank: .four, suit: .copas), Card(rank: .five, suit: .espadas), Card(rank: .six, suit: .bastos)]
+        helper.createNewGame(player1Hand: player1Hand, player2Hand: player2Hand)
+
+        // Act
+        helper.engine.handle(move: .playCard(player1Hand[0])) // P1 plays a card
+        helper.engine.handle(move: .callTruco) // P2 calls truco
+
+        // Assert
+        XCTAssertEqual(helper.gameState.trucoState, .trucoCalled, "Truco should be callable after a card has been played.")
+    }
+
+    func test_playerCanAccept_truco() {
+        // Arrange
+        helper.createNewGame(player1Hand: [], player2Hand: [])
+        helper.engine.handle(move: .callTruco) // P1 calls Truco
+
+        // Act
+        helper.engine.handle(move: .acceptTruco) // P2 accepts
+
+        // Assert
+        XCTAssertEqual(helper.gameState.trucoState, .accepted)
+        XCTAssertEqual(helper.gameState.trucoPoints, 2)
+        XCTAssertEqual(helper.gameState.currentPlayerIndex, 0, "Turn should return to the last caller (P1).")
+    }
+
+    func test_pointsAreAwardedCorrectly_forRejectedTruco() {
+        // Arrange
+        helper.createNewGame(player1Hand: [], player2Hand: [])
+        helper.engine.handle(move: .callTruco) // P1 calls Truco
+
+        // Act
+        helper.engine.handle(move: .rejectTruco) // P2 rejects
+
+        // Assert
+        XCTAssertEqual(helper.player1.score, 1, "Player 1 should get 1 point for the rejected Truco.")
+    }
 }
