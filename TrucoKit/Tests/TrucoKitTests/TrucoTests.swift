@@ -159,4 +159,17 @@ final class TrucoTests: XCTestCase {
         // Assert
         XCTAssertEqual(helper.player1.score, 1, "Player 1 should get 1 point for the rejected Truco.")
     }
+
+    func test_playerCannotCallTruco_whenEnvidoIsActive() {
+        // Arrange
+        helper.createNewGame(player1Hand: [], player2Hand: [])
+        helper.engine.handle(move: .callEnvido) // P1 calls Envido
+
+        // Act: P2 tries to call Truco while Envido is active
+        helper.engine.handle(move: .callTruco)
+
+        // Assert
+        XCTAssertEqual(helper.gameState.trucoState, .none, "Truco should not be callable while an Envido bet is active.")
+        XCTAssertEqual(helper.gameState.envidoState, .envidoCalled, "Envido state should remain unchanged.")
+    }
 }

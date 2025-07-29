@@ -147,13 +147,8 @@ struct GameView: View {
 
                 Spacer()
 
-                // Current Player Indicator
-                if gameState.gamePhase == .playing {
-                    Text(isLocalPlayerTurn ? "Your Turn" : "Opponent's Turn")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .padding(.bottom)
-                }
+                GameStatusView(gameState: gameState, localPlayerId: localPlayerId)
+                    .padding(.bottom)
 
                 // Local Player's Hand
                 Text("Your Hand")
@@ -182,6 +177,7 @@ struct GameView: View {
                             Button("Truco") {
                                 callTruco()
                             }
+                            .disabled(gameState.envidoState != .none && gameState.envidoState != .accepted && gameState.envidoState != .rejected)
                             .padding()
                             .background(Color.orange)
                             .foregroundColor(.white)
@@ -240,6 +236,7 @@ struct GameView: View {
                             Button("Envido") {
                                 callEnvido()
                             }
+                            .disabled(gameState.trucoState != .none)
                             .padding()
                             .background(Color.purple)
                             .foregroundColor(.white)

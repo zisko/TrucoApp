@@ -46,6 +46,10 @@ public class TrucoEngine {
             }
 
         case .callTruco:
+            guard gameState.envidoState == .none || gameState.envidoState == .rejected || gameState.envidoState == .accepted else {
+                print("Error: Cannot call Truco while Envido is being resolved.")
+                return
+            }
             guard gameState.trucoState != .rejected else { return }
 
             let currentPlayerId = gameState.players[gameState.currentPlayerIndex].id
