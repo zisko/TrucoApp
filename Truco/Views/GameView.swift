@@ -7,6 +7,7 @@ struct GameView: View {
     @State private var localPlayerId: UUID
     @State private var isHandWinnersExpanded = false
     @State private var gameEngine: TrucoEngine
+    @State private var trucoAlertShown = false
 
     var isLocalPlayerTurn: Bool {
         guard !gameState.players.isEmpty else { return false }
@@ -372,6 +373,62 @@ struct GameView: View {
                 )
             }
 
+            // Truco Result Feedback
+            if (gameState.trucoState == .accepted || gameState.trucoState == .rejected) && trucoAlertShown {
+                VStack(spacing: 16) {
+                    HStack {
+                        Image(systemName: gameState.trucoState == .accepted ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .foregroundColor(gameState.trucoState == .accepted ? .green : .red)
+                            .font(.title)
+                        Text(gameState.trucoState == .accepted ? "Truco Accepted!" : "Truco Rejected!")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(gameState.trucoState == .accepted ? .green : .red)
+                    }
+
+                    if gameState.trucoState == .accepted {
+                        Text("\(gameState.trucoPoints) points at stake")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                    } else if gameState.trucoState == .rejected {
+                        if let callerId = gameState.trucoCallerId,
+                           let caller = gameState.players.first(where: {
+                               $0.id == callerId
+                           })
+                        {
+                            Text(
+                                "\(caller.name) gets \(gameState.trucoPoints > 1 ? gameState.trucoPoints - 1 : 1) point(s)"
+                            )
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                .padding(24)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Color(.systemBackground))
+                        .shadow(
+                            color: .black.opacity(0.1),
+                            radius: 10,
+                            x: 0,
+                            y: 5
+                        )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke((gameState.trucoState == .accepted ? Color.green : Color.red).opacity(0.3), lineWidth: 2)
+                )
+                .transition(.scale.combined(with: .opacity))
+                .onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        withAnimation {
+                            trucoAlertShown = false
+                        }
+                    }
+                }
+            }
+
             // Overlays
             if gameState.gamePhase == .handOver {
                 if let lastOutcome = gameState.handOutcomes.last {
@@ -417,6 +474,13 @@ struct GameView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color.black.opacity(0.8))
                 .foregroundColor(.white)
+            }
+        }
+        .onChange(of: gameState.trucoState) { _, newValue in
+            if newValue == .accepted || newValue == .rejected {
+                withAnimation {
+                    trucoAlertShown = true
+                }
             }
         }
     }
