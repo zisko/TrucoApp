@@ -46,13 +46,21 @@ public class TrucoEngine {
             }
 
         case .callTruco:
-            guard gameState.envidoState == .none || gameState.envidoState == .rejected || gameState.envidoState == .accepted else {
-                print("Error: Cannot call Truco while Envido is being resolved.")
+            guard
+                gameState.envidoState == .none
+                || gameState.envidoState == .rejected
+                || gameState.envidoState == .accepted
+            else {
+                print(
+                    "Error: Cannot call Truco while Envido is being resolved."
+                )
                 return
             }
             guard gameState.trucoState != .rejected else { return }
 
-            let currentPlayerId = gameState.players[gameState.currentPlayerIndex].id
+            let currentPlayerId = gameState.players[
+                gameState.currentPlayerIndex
+            ].id
 
             // A player cannot raise their own bet
             if gameState.trucoCallerId == currentPlayerId { return }
@@ -61,7 +69,6 @@ public class TrucoEngine {
             case .none:
                 gameState.trucoState = .trucoCalled
                 gameState.trucoPoints = 2
-                gameState.activeBet = ActiveBet(betType: .truco, callerId: currentPlayerId, points: 2)
             case .trucoCalled, .accepted:
                 gameState.trucoState = .retrucoCalled
                 gameState.trucoPoints = 3
@@ -73,26 +80,31 @@ public class TrucoEngine {
             }
 
             gameState.trucoCallerId = currentPlayerId
-            gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
+            gameState.currentPlayerIndex =
+                (gameState.currentPlayerIndex + 1) % gameState.players.count
 
         case .acceptTruco:
             gameState.trucoState = .accepted
-            gameState.activeBet = nil
-            if let callerIndex = gameState.players.firstIndex(where: { $0.id == gameState.trucoCallerId }) {
+            if let callerIndex = gameState.players.firstIndex(where: {
+                $0.id == gameState.trucoCallerId
+            }) {
                 gameState.currentPlayerIndex = callerIndex
             }
             print("Truco accepted!")
 
         case .rejectTruco:
             if let callerId = gameState.trucoCallerId {
-                if let callerIndex = gameState.players.firstIndex(where: { $0.id == callerId }) {
-                    let pointsAwarded = (gameState.trucoPoints > 1) ? gameState.trucoPoints - 1 : 1
+                if let callerIndex = gameState.players.firstIndex(where: {
+                    $0.id == callerId
+                }) {
+                    let pointsAwarded =
+                        (gameState.trucoPoints > 1)
+                            ? gameState.trucoPoints - 1 : 1
                     gameState.players[callerIndex].score += pointsAwarded
                 }
             }
             gameState.gamePhase = .roundSummary
             gameState.trucoState = .rejected
-            gameState.activeBet = nil
             checkMatchEnd()
 
         case .continueAfterHand:
@@ -103,14 +115,15 @@ public class TrucoEngine {
 
         case .callEnvido:
             guard gameState.handOutcomes.isEmpty else { return }
-            let currentPlayerId = gameState.players[gameState.currentPlayerIndex].id
+            let currentPlayerId = gameState.players[
+                gameState.currentPlayerIndex
+            ].id
             if gameState.envidoCallerId == currentPlayerId { return }
 
             switch gameState.envidoState {
             case .none:
                 gameState.envidoState = .envidoCalled
                 gameState.envidoPoints = 2
-                gameState.activeBet = ActiveBet(betType: .envido, callerId: currentPlayerId, points: 2)
             case .envidoCalled:
                 gameState.envidoState = .envidoEnvidoCalled
                 gameState.envidoPoints = 4
@@ -119,44 +132,60 @@ public class TrucoEngine {
             }
 
             gameState.envidoCallerId = currentPlayerId
-            gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
+            gameState.currentPlayerIndex =
+                (gameState.currentPlayerIndex + 1) % gameState.players.count
 
         case .callRealEnvido:
             guard gameState.handOutcomes.isEmpty else { return }
-            let currentPlayerId = gameState.players[gameState.currentPlayerIndex].id
+            let currentPlayerId = gameState.players[
+                gameState.currentPlayerIndex
+            ].id
             if gameState.envidoCallerId == currentPlayerId { return }
 
-            guard gameState.envidoState == .none || gameState.envidoState == .envidoCalled else { return }
+            guard
+                gameState.envidoState == .none
+                || gameState.envidoState == .envidoCalled
+            else { return }
 
-            let basePoints = (gameState.envidoState == .envidoCalled) ? gameState.envidoPoints : 0
+            let basePoints =
+                (gameState.envidoState == .envidoCalled)
+                    ? gameState.envidoPoints : 0
             gameState.envidoState = .realEnvidoCalled
             let points = basePoints + 3
             gameState.envidoPoints = points
-            gameState.activeBet = ActiveBet(betType: .realEnvido, callerId: currentPlayerId, points: points)
             gameState.envidoCallerId = currentPlayerId
-            gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
+            gameState.currentPlayerIndex =
+                (gameState.currentPlayerIndex + 1) % gameState.players.count
 
         case .callFaltaEnvido:
             guard gameState.handOutcomes.isEmpty else { return }
-            let currentPlayerId = gameState.players[gameState.currentPlayerIndex].id
+            let currentPlayerId = gameState.players[
+                gameState.currentPlayerIndex
+            ].id
             if gameState.envidoCallerId == currentPlayerId { return }
 
-            guard gameState.envidoState == .none || gameState.envidoState == .envidoCalled || gameState.envidoState == .realEnvidoCalled || gameState.envidoState == .envidoEnvidoCalled else { return }
+            guard
+                gameState.envidoState == .none
+                || gameState.envidoState == .envidoCalled
+                || gameState.envidoState == .realEnvidoCalled
+                || gameState.envidoState == .envidoEnvidoCalled
+            else { return }
 
             let basePoints = gameState.envidoPoints
             gameState.envidoState = .faltaEnvidoCalled
-            let opponentScore = gameState.players.first(where: { $0.id != currentPlayerId })?.score ?? 0
+            let opponentScore =
+                gameState.players.first(where: { $0.id != currentPlayerId })?
+                    .score ?? 0
             let faltaPoints = 30 - opponentScore
             let points = basePoints + faltaPoints
             gameState.envidoPoints = points
-            gameState.activeBet = ActiveBet(betType: .faltaEnvido, callerId: currentPlayerId, points: points)
             gameState.envidoCallerId = currentPlayerId
-            gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
+            gameState.currentPlayerIndex =
+                (gameState.currentPlayerIndex + 1) % gameState.players.count
 
         case .acceptEnvido:
             resolveEnvido()
             gameState.gamePhase = .envidoSummary // NEW: Pause to show Envido results
-            gameState.activeBet = nil
             print("Envido accepted!")
 
         case .rejectEnvido:
@@ -165,8 +194,12 @@ public class TrucoEngine {
                     $0.id == callerId
                 }) {
                     var pointsToAward = 1
-                    if gameState.envidoState == .realEnvidoCalled { pointsToAward = 2 }
-                    if gameState.envidoState == .envidoEnvidoCalled { pointsToAward = 2 }
+                    if gameState.envidoState == .realEnvidoCalled {
+                        pointsToAward = 2
+                    }
+                    if gameState.envidoState == .envidoEnvidoCalled {
+                        pointsToAward = 2
+                    }
                     // Falta Envido rejection is more complex, but 1 is a common rule if not accepted.
 
                     gameState.players[callerIndex].score += pointsToAward
@@ -177,7 +210,6 @@ public class TrucoEngine {
                 }
             }
             gameState.envidoState = .rejected
-            gameState.activeBet = nil
 
         default:
             break
@@ -238,12 +270,24 @@ public class TrucoEngine {
         let play2 = gameState.currentHandPlayedCards[1]
 
         if play1.card.trucoValue < play2.card.trucoValue {
-            return HandOutcome(winnerId: play1.player, winningCard: play1.card, losingCard: play2.card)
+            return HandOutcome(
+                winnerId: play1.player,
+                winningCard: play1.card,
+                losingCard: play2.card
+            )
         } else if play2.card.trucoValue < play1.card.trucoValue {
-            return HandOutcome(winnerId: play2.player, winningCard: play2.card, losingCard: play1.card)
+            return HandOutcome(
+                winnerId: play2.player,
+                winningCard: play2.card,
+                losingCard: play1.card
+            )
         } else {
             // Tie
-            return HandOutcome(winnerId: nil, winningCard: play1.card, losingCard: play2.card)
+            return HandOutcome(
+                winnerId: nil,
+                winningCard: play1.card,
+                losingCard: play2.card
+            )
         }
     }
 
@@ -271,7 +315,9 @@ public class TrucoEngine {
             if tiedHands == 3 {
                 gameState.roundWinner = gameState.manoPlayerId
             } else {
-                if let firstNonTiedHandWinner = handWinners.first(where: { $0 != nil }) {
+                if let firstNonTiedHandWinner = handWinners.first(where: {
+                    $0 != nil
+                }) {
                     gameState.roundWinner = firstNonTiedHandWinner
                 }
             }
@@ -289,7 +335,9 @@ public class TrucoEngine {
         checkRoundEnd() // See if the round is over
 
         // If the round didn't end, start the next hand
-        if gameState.gamePhase != .roundSummary, gameState.gamePhase != .gameOver {
+        if gameState.gamePhase != .roundSummary,
+           gameState.gamePhase != .gameOver
+        {
             gameState.currentHandPlayedCards = []
             startNewHand()
             gameState.gamePhase = .playing
@@ -304,7 +352,9 @@ public class TrucoEngine {
 
         // The Envido interruption is over, so the turn goes back to the original caller
         if let callerId = gameState.envidoCallerId,
-           let callerIndex = gameState.players.firstIndex(where: { $0.id == callerId })
+           let callerIndex = gameState.players.firstIndex(where: {
+               $0.id == callerId
+           })
         {
             gameState.currentPlayerIndex = callerIndex
         }
@@ -314,7 +364,10 @@ public class TrucoEngine {
 
     private func awardRoundPoints() {
         guard let winnerId = gameState.roundWinner,
-              let winnerIndex = gameState.players.firstIndex(where: { $0.id == winnerId }) else { return }
+              let winnerIndex = gameState.players.firstIndex(where: {
+                  $0.id == winnerId
+              })
+        else { return }
 
         let points: Int
         switch gameState.trucoState {
@@ -327,11 +380,14 @@ public class TrucoEngine {
         }
 
         gameState.players[winnerIndex].score += points
-        print("Awarded \(points) to \(gameState.players[winnerIndex].name). New score: \(gameState.players[winnerIndex].score)")
+        print(
+            "Awarded \(points) to \(gameState.players[winnerIndex].name). New score: \(gameState.players[winnerIndex].score)"
+        )
     }
 
     private func checkMatchEnd() {
-        if let winningPlayer = gameState.players.first(where: { $0.score >= 30 }) {
+        if let winningPlayer = gameState.players.first(where: { $0.score >= 30 }
+        ) {
             gameState.gamePhase = .gameOver
             gameState.matchWinner = winningPlayer.id
             print("Match over! Winner is \(winningPlayer.name)")
@@ -399,6 +455,9 @@ public class TrucoEngine {
     }
 
     private func calculateEnvidoPoints(for player: Player) -> Int {
+        guard player.hand.count >= 3 else {
+            fatalError("card in hand count must be >= 3 to call envido")
+        }
         var maxPoints = 0
         let groupedBySuit = Dictionary(grouping: player.hand, by: { $0.suit })
 
@@ -429,7 +488,9 @@ public class TrucoEngine {
             print("error: attempted to resolve envido but it was never called")
             return
         }
-        guard let player1 = gameState.players.first, let player2 = gameState.players.last else { return }
+        guard let player1 = gameState.players.first,
+              let player2 = gameState.players.last
+        else { return }
 
         let player1EnvidoPoints = calculateEnvidoPoints(for: player1)
         let player2EnvidoPoints = calculateEnvidoPoints(for: player2)
@@ -453,7 +514,9 @@ public class TrucoEngine {
         gameState.envidoWinnerId = winnerId
 
         if let winner = winnerId {
-            if let winnerIndex = gameState.players.firstIndex(where: { $0.id == winner }) {
+            if let winnerIndex = gameState.players.firstIndex(where: {
+                $0.id == winner
+            }) {
                 gameState.players[winnerIndex].score += gameState.envidoPoints
                 print(
                     "Envido winner: \(gameState.players[winnerIndex].name) gets \(gameState.envidoPoints) points."
@@ -506,8 +569,10 @@ public class TrucoEngine {
         }
 
         // 5. Play a card (default action)
-        if let opponent = gameState.players.first(where: { $0.id == gameState.players[gameState.currentPlayerIndex].id }),
-           let randomCard = opponent.hand.randomElement()
+        if let opponent = gameState.players.first(where: {
+            $0.id == gameState.players[gameState.currentPlayerIndex].id
+        }),
+            let randomCard = opponent.hand.randomElement()
         {
             handle(move: .playCard(randomCard))
         }

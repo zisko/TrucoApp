@@ -19,17 +19,21 @@ struct GameStatusView: View {
                 .padding(.bottom, 2)
 
             // Truco and Envido Status
-            if let activeBet = gameState.activeBet {
-                Text("Active Bet: \(activeBet.betType.rawValue.capitalized) (\(activeBet.points) points)")
+            if gameState.trucoState != .none {
+                Text("Active Truco: \(gameState.trucoPoints) points")
                     .font(.headline)
-                    .foregroundColor(.yellow)
+                    .foregroundColor(.orange)
                     .transition(.scale)
-            } else if gameState.trucoState != .none, gameState.trucoState != .accepted {
+            }
+
+            // Show Truco state independently
+            if gameState.trucoState != .none, gameState.trucoState != .accepted {
                 Text("\(gameState.trucoState.rawValue.capitalized)!")
                     .font(.headline)
                     .foregroundColor(.orange)
             }
 
+            // Show Envido state independently
             if gameState.envidoState != .none, gameState.envidoState != .accepted, gameState.envidoState != .rejected {
                 Text("\(gameState.envidoState.rawValue.capitalized)!")
                     .font(.headline)
@@ -39,7 +43,7 @@ struct GameStatusView: View {
         .padding()
         .background(Color.black.opacity(0.2))
         .cornerRadius(10)
-        .animation(.default, value: gameState.activeBet)
+        .animation(.default, value: gameState.trucoState)
         .animation(.default, value: gameState.trucoState)
         .animation(.default, value: gameState.envidoState)
     }

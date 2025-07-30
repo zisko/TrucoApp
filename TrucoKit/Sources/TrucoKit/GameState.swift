@@ -110,25 +110,6 @@ public struct HandOutcome: Codable, Hashable {
     }
 }
 
-public enum BetType: String, Codable {
-    case truco
-    case envido
-    case realEnvido
-    case faltaEnvido
-}
-
-public struct ActiveBet: Codable, Hashable {
-    public let betType: BetType
-    public var callerId: UUID
-    public let points: Int
-
-    public init(betType: BetType, callerId: UUID, points: Int) {
-        self.betType = betType
-        self.callerId = callerId
-        self.points = points
-    }
-}
-
 // MARK: - Game State
 
 @Observable public class GameState: Codable {
@@ -141,7 +122,6 @@ public struct ActiveBet: Codable, Hashable {
     public var currentHandPlayedCards: [PlayedCardInfo]
     public var handOutcomes: [HandOutcome]
     public var manoPlayerId: UUID?
-    public var activeBet: ActiveBet?
 
     // Truco State
     public var trucoState: TrucoState
@@ -157,30 +137,70 @@ public struct ActiveBet: Codable, Hashable {
     public var envidoWinnerId: UUID?
 
     enum CodingKeys: String, CodingKey {
-        case players, deck, currentPlayerIndex, gamePhase, roundWinner, matchWinner, currentHandPlayedCards, handOutcomes, manoPlayerId, activeBet, trucoState, trucoCallerId, trucoPoints, envidoState, envidoCallerId, envidoPoints, player1EnvidoPoints, player2EnvidoPoints, envidoWinnerId
+        case players,
+             deck,
+             currentPlayerIndex,
+             gamePhase,
+             roundWinner,
+             matchWinner,
+             currentHandPlayedCards,
+             handOutcomes,
+             manoPlayerId,
+             trucoState,
+             trucoCallerId,
+             trucoPoints,
+             envidoState,
+             envidoCallerId,
+             envidoPoints,
+             player1EnvidoPoints,
+             player2EnvidoPoints,
+             envidoWinnerId
     }
 
     public required init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         players = try container.decode([Player].self, forKey: .players)
         deck = try container.decode([Card].self, forKey: .deck)
-        currentPlayerIndex = try container.decode(Int.self, forKey: .currentPlayerIndex)
+        currentPlayerIndex = try container.decode(
+            Int.self,
+            forKey: .currentPlayerIndex
+        )
         gamePhase = try container.decode(GamePhase.self, forKey: .gamePhase)
         roundWinner = try container.decode(UUID?.self, forKey: .roundWinner)
         matchWinner = try container.decode(UUID?.self, forKey: .matchWinner)
-        currentHandPlayedCards = try container.decode([PlayedCardInfo].self, forKey: .currentHandPlayedCards)
-        handOutcomes = try container.decode([HandOutcome].self, forKey: .handOutcomes)
+        currentHandPlayedCards = try container.decode(
+            [PlayedCardInfo].self,
+            forKey: .currentHandPlayedCards
+        )
+        handOutcomes = try container.decode(
+            [HandOutcome].self,
+            forKey: .handOutcomes
+        )
         manoPlayerId = try container.decode(UUID?.self, forKey: .manoPlayerId)
-        activeBet = try container.decode(ActiveBet?.self, forKey: .activeBet)
         trucoState = try container.decode(TrucoState.self, forKey: .trucoState)
         trucoCallerId = try container.decode(UUID?.self, forKey: .trucoCallerId)
         trucoPoints = try container.decode(Int.self, forKey: .trucoPoints)
-        envidoState = try container.decode(EnvidoState.self, forKey: .envidoState)
-        envidoCallerId = try container.decode(UUID?.self, forKey: .envidoCallerId)
+        envidoState = try container.decode(
+            EnvidoState.self,
+            forKey: .envidoState
+        )
+        envidoCallerId = try container.decode(
+            UUID?.self,
+            forKey: .envidoCallerId
+        )
         envidoPoints = try container.decode(Int.self, forKey: .envidoPoints)
-        player1EnvidoPoints = try container.decode(Int?.self, forKey: .player1EnvidoPoints)
-        player2EnvidoPoints = try container.decode(Int?.self, forKey: .player2EnvidoPoints)
-        envidoWinnerId = try container.decode(UUID?.self, forKey: .envidoWinnerId)
+        player1EnvidoPoints = try container.decode(
+            Int?.self,
+            forKey: .player1EnvidoPoints
+        )
+        player2EnvidoPoints = try container.decode(
+            Int?.self,
+            forKey: .player2EnvidoPoints
+        )
+        envidoWinnerId = try container.decode(
+            UUID?.self,
+            forKey: .envidoWinnerId
+        )
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -191,10 +211,12 @@ public struct ActiveBet: Codable, Hashable {
         try container.encode(gamePhase, forKey: .gamePhase)
         try container.encode(roundWinner, forKey: .roundWinner)
         try container.encode(matchWinner, forKey: .matchWinner)
-        try container.encode(currentHandPlayedCards, forKey: .currentHandPlayedCards)
+        try container.encode(
+            currentHandPlayedCards,
+            forKey: .currentHandPlayedCards
+        )
         try container.encode(handOutcomes, forKey: .handOutcomes)
         try container.encode(manoPlayerId, forKey: .manoPlayerId)
-        try container.encode(activeBet, forKey: .activeBet)
         try container.encode(trucoState, forKey: .trucoState)
         try container.encode(trucoCallerId, forKey: .trucoCallerId)
         try container.encode(trucoPoints, forKey: .trucoPoints)
@@ -216,7 +238,7 @@ public struct ActiveBet: Codable, Hashable {
         currentHandPlayedCards = []
         handOutcomes = []
         manoPlayerId = nil
-        activeBet = nil
+
         trucoState = .none
         trucoCallerId = nil
         trucoPoints = 0
