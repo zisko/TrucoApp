@@ -8,6 +8,10 @@ struct GameView: View {
     @State private var isHandWinnersExpanded = false
     private var gameEngine: TrucoEngine
 
+    private var activeBet: BetType? {
+        gameEngine.activeBet
+    }
+
     var isLocalPlayerTurn: Bool {
         guard let localPlayer = gameState.players.first(where: { $0.id == localPlayerId }) else { return false }
         return gameState.players[gameState.currentPlayerIndex].id == localPlayer.id
@@ -148,7 +152,7 @@ struct GameView: View {
                 Spacer()
 
                 if gameState.gamePhase == .playing || gameState.gamePhase == .handOver {
-                    GameStatusView(gameState: gameState, localPlayerId: localPlayerId)
+                    GameStatusView(gameEngine: gameEngine, localPlayerId: localPlayerId)
                         .padding(.bottom)
                 }
 
@@ -180,7 +184,7 @@ struct GameView: View {
                                 Button("Truco") {
                                     callTruco()
                                 }
-                                .disabled(gameState.envidoState != .none && gameState.envidoState != .accepted && gameState.envidoState != .rejected)
+                                .disabled(activeBet != nil || (gameState.envidoState != .none && gameState.envidoState != .accepted && gameState.envidoState != .rejected))
                                 .padding()
                                 .background(Color.orange)
                                 .foregroundColor(.white)
@@ -240,7 +244,7 @@ struct GameView: View {
                                 Button("Envido") {
                                     callEnvido()
                                 }
-                                .disabled(gameState.trucoState != .none)
+                                .disabled(activeBet != nil || gameState.trucoState != .none)
                                 .padding()
                                 .background(Color.purple)
                                 .foregroundColor(.white)

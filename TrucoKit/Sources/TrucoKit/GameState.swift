@@ -110,6 +110,13 @@ public struct HandOutcome: Codable, Hashable {
     }
 }
 
+public enum BetType: String, Codable {
+    case truco
+    case envido
+    case realEnvido
+    case faltaEnvido
+}
+
 // MARK: - Game State
 
 @Observable public class GameState: Codable {

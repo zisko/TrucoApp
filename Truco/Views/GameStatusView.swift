@@ -2,8 +2,16 @@ import SwiftUI
 import TrucoKit
 
 struct GameStatusView: View {
-    let gameState: GameState
+    var gameEngine: TrucoEngine
     let localPlayerId: UUID
+
+    private var gameState: GameState {
+        gameEngine.gameState
+    }
+
+    private var activeBet: BetType? {
+        gameEngine.activeBet
+    }
 
     var isLocalPlayerTurn: Bool {
         guard !gameState.players.isEmpty else { return false }
@@ -19,7 +27,12 @@ struct GameStatusView: View {
                 .padding(.bottom, 2)
 
             // Truco and Envido Status
-            if gameState.trucoState != .none, gameState.trucoState != .accepted {
+            if let activeBet = activeBet {
+                Text("Active Bet: \(activeBet.rawValue.capitalized)")
+                    .font(.headline)
+                    .foregroundColor(.yellow)
+                    .transition(.scale)
+            } else if gameState.trucoState != .none, gameState.trucoState != .accepted {
                 Text("\(gameState.trucoState.rawValue.capitalized)!")
                     .font(.headline)
                     .foregroundColor(.orange)
@@ -34,6 +47,7 @@ struct GameStatusView: View {
         .padding()
         .background(Color.black.opacity(0.2))
         .cornerRadius(10)
+        .animation(.default, value: activeBet)
         .animation(.default, value: gameState.trucoState)
         .animation(.default, value: gameState.envidoState)
     }

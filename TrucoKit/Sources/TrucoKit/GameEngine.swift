@@ -1,7 +1,8 @@
 import Foundation
 
-public class TrucoEngine {
+@Observable public class TrucoEngine {
     public var gameState: GameState
+    public var activeBet: BetType?
 
     public init(gameState: GameState) {
         self.gameState = gameState
@@ -61,6 +62,7 @@ public class TrucoEngine {
             case .none:
                 gameState.trucoState = .trucoCalled
                 gameState.trucoPoints = 2
+                activeBet = .truco
             case .trucoCalled, .accepted:
                 gameState.trucoState = .retrucoCalled
                 gameState.trucoPoints = 3
@@ -76,6 +78,7 @@ public class TrucoEngine {
 
         case .acceptTruco:
             gameState.trucoState = .accepted
+            activeBet = nil
             if let callerIndex = gameState.players.firstIndex(where: { $0.id == gameState.trucoCallerId }) {
                 gameState.currentPlayerIndex = callerIndex
             }
@@ -90,6 +93,7 @@ public class TrucoEngine {
             }
             gameState.gamePhase = .roundSummary
             gameState.trucoState = .rejected
+            activeBet = nil
             checkMatchEnd()
 
         case .continueAfterHand:
@@ -107,6 +111,7 @@ public class TrucoEngine {
             case .none:
                 gameState.envidoState = .envidoCalled
                 gameState.envidoPoints = 2
+                activeBet = .envido
             case .envidoCalled:
                 gameState.envidoState = .envidoEnvidoCalled
                 gameState.envidoPoints = 4
@@ -127,6 +132,7 @@ public class TrucoEngine {
             let basePoints = (gameState.envidoState == .envidoCalled) ? gameState.envidoPoints : 0
             gameState.envidoState = .realEnvidoCalled
             gameState.envidoPoints = basePoints + 3
+            activeBet = .realEnvido
             gameState.envidoCallerId = currentPlayerId
             gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
 
@@ -142,12 +148,14 @@ public class TrucoEngine {
             let opponentScore = gameState.players.first(where: { $0.id != currentPlayerId })?.score ?? 0
             let faltaPoints = 30 - opponentScore
             gameState.envidoPoints = basePoints + faltaPoints
+            activeBet = .faltaEnvido
             gameState.envidoCallerId = currentPlayerId
             gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
 
         case .acceptEnvido:
             resolveEnvido()
             gameState.gamePhase = .envidoSummary // NEW: Pause to show Envido results
+            activeBet = nil
             print("Envido accepted!")
 
         case .rejectEnvido:
@@ -168,6 +176,7 @@ public class TrucoEngine {
                 }
             }
             gameState.envidoState = .rejected
+            activeBet = nil
 
         default:
             break
