@@ -443,7 +443,7 @@ public class TrucoEngine {
         var winnerId: UUID?
         if player1EnvidoPoints > player2EnvidoPoints {
             winnerId = player1.id
-        } else if player2EnvidoPoints > player2EnvidoPoints {
+        } else if player2EnvidoPoints > player1EnvidoPoints {
             winnerId = player2.id
         } else {
             // Tie in Envido: The player who is "mano" (started the round) wins the envido tie.
