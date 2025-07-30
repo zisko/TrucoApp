@@ -12,7 +12,7 @@ The project is a SwiftUI-based iOS game named "Truco". It includes:
 ## Swift and SwiftUI Development Preferences
 
 *   **@Observable**: Prefer the new `@Observable` macro for managing observable models in SwiftUI views. This is the primary choice for state management.
-*   **Avoid ObservableObject and Combine**: Where possible, avoid using `ObservableObject` and the Combine framework for state management.
+*   **Avoid ObservableObject and Combine**: Where possible, avoid using `ObservableObject` and the Combine framework for state management. Prefer `@StateObject` for creating and managing the lifecycle of observable objects within a view.
 *   **Avoid MVVM**: The Model-View-ViewModel (MVVM) architectural pattern should be avoided. Favor simpler, more direct approaches.
 *   **UI-Agnostic Logic**: Core logic in shared modules like `TrucoKit` should remain completely UI-agnostic and not import SwiftUI.
 *   **View Organization**: SwiftUI views should be decomposed into small, single-purpose components and organized into a dedicated `Views` directory (e.g., `Truco/Views`).

@@ -3,17 +3,14 @@ import SwiftUI
 import TrucoKit
 
 struct GameView: View {
-    @ObservedObject private var gameEngine: TrucoEngine
+    @State private var gameState: GameState
     @State private var localPlayerId: UUID
     @State private var isHandWinnersExpanded = false
-
-    private var gameState: GameState {
-        gameEngine.gameState
-    }
+    private var gameEngine: TrucoEngine
 
     var isLocalPlayerTurn: Bool {
-        guard let localPlayer = gameState.players.first(where: { $0.id == localPlayerId }) else { return false }
-        return gameState.players[gameState.currentPlayerIndex].id == localPlayer.id
+        guard !gameState.players.isEmpty else { return false }
+        return gameState.players[gameState.currentPlayerIndex].id == localPlayerId
     }
 
     var matchWinnerName: String? {
@@ -23,14 +20,11 @@ struct GameView: View {
         return nil
     }
 
-    func playerName(for id: UUID) -> String {
-        return gameState.players.first(where: { $0.id == id })?.name ?? "Unknown Player"
-    }
-
     init() {
         let initialGameState = GameState()
-        _gameEngine = ObservedObject(wrappedValue: TrucoEngine(gameState: initialGameState))
+        _gameState = State(initialValue: initialGameState)
         _localPlayerId = State(initialValue: UUID())
+        gameEngine = TrucoEngine(gameState: initialGameState)
     }
 
     func dealInitialCards() {
@@ -150,7 +144,7 @@ struct GameView: View {
                 Spacer()
 
                 if gameState.gamePhase == .playing || gameState.gamePhase == .handOver {
-                    GameStatusView(gameEngine: gameEngine, localPlayerId: localPlayerId)
+                    GameStatusView(gameState: gameState, localPlayerId: localPlayerId)
                         .padding(.bottom)
                 }
 

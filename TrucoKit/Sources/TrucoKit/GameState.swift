@@ -125,7 +125,7 @@ public struct ActiveBet: Codable, Hashable {
 
 // MARK: - Game State
 
-public class GameState: Codable {
+@Observable public class GameState: Codable {
     public var players: [Player]
     public var deck: [Card]
     public var currentPlayerIndex: Int

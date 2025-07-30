@@ -2,12 +2,8 @@ import SwiftUI
 import TrucoKit
 
 struct GameStatusView: View {
-    @ObservedObject var gameEngine: TrucoEngine
+    let gameState: GameState
     let localPlayerId: UUID
-
-    private var gameState: GameState {
-        gameEngine.gameState
-    }
 
     var isLocalPlayerTurn: Bool {
         guard !gameState.players.isEmpty else { return false }

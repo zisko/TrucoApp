@@ -1,7 +1,7 @@
 import Foundation
 
 public class TrucoEngine {
-    @Published public var gameState: GameState
+    public var gameState: GameState
 
     public init(gameState: GameState) {
         self.gameState = gameState
