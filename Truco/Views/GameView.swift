@@ -6,7 +6,7 @@ struct GameView: View {
     @State private var gameState: GameState
     @State private var localPlayerId: UUID
     @State private var isHandWinnersExpanded = false
-    private var gameEngine: TrucoEngine
+    @State private var gameEngine: TrucoEngine
 
     var isLocalPlayerTurn: Bool {
         guard !gameState.players.isEmpty else { return false }
@@ -43,42 +43,6 @@ struct GameView: View {
                 gameEngine.makeOpponentMove()
             }
         }
-    }
-
-    func callTruco() {
-        gameEngine.handle(move: .callTruco)
-        if !isLocalPlayerTurn && gameState.gamePhase == .playing {
-            gameEngine.makeOpponentMove()
-        }
-    }
-
-    func acceptTruco() {
-        gameEngine.handle(move: .acceptTruco)
-        if !isLocalPlayerTurn && gameState.gamePhase == .playing {
-            gameEngine.makeOpponentMove()
-        }
-    }
-
-    func rejectTruco() {
-        gameEngine.handle(move: .rejectTruco)
-    }
-
-    func callEnvido() {
-        gameEngine.handle(move: .callEnvido)
-        if !isLocalPlayerTurn && gameState.gamePhase == .playing {
-            gameEngine.makeOpponentMove()
-        }
-    }
-
-    func acceptEnvido() {
-        gameEngine.handle(move: .acceptEnvido)
-        if !isLocalPlayerTurn && gameState.gamePhase == .playing {
-            gameEngine.makeOpponentMove()
-        }
-    }
-
-    func rejectEnvido() {
-        gameEngine.handle(move: .rejectEnvido)
     }
 
     func startNewRound() {
@@ -168,108 +132,54 @@ struct GameView: View {
                     .cornerRadius(10)
                 }
 
-                // Truco and Envido Buttons
-                VStack {
-                    if isLocalPlayerTurn && gameState.gamePhase == .playing {
-                        HStack {
-                            if gameEngine.gameState.trucoState == .none || (gameEngine.gameState.trucoState == .accepted && gameEngine.gameState.trucoCallerId == localPlayerId) {
-                                Button("Truco") {
-                                    callTruco()
+                // Bet Buttons - Always available when it's the player's turn
+                if isLocalPlayerTurn && gameState.gamePhase == .playing {
+                    VStack(spacing: 12) {
+                        // Envido Button - Only available at the beginning
+                        if gameState.envidoState == .none && gameState.currentHandPlayedCards.isEmpty {
+                            Button("Envido") {
+                                gameEngine.handle(move: .callEnvido)
+                                if !isLocalPlayerTurn && gameState.gamePhase == .playing {
+                                    gameEngine.makeOpponentMove()
                                 }
-                                .disabled(gameState.activeBet != nil || (gameState.envidoState != .none && gameState.envidoState != .accepted && gameState.envidoState != .rejected))
-                                .padding()
-                                .background(Color.orange)
-                                .foregroundColor(.white)
-                                .cornerRadius(10)
-                            } else if gameEngine.gameState.trucoState == .trucoCalled && gameEngine.gameState.trucoCallerId != localPlayerId {
-                                Button("Accept Truco") {
-                                    acceptTruco()
-                                }
-                                .padding()
-                                .background(Color.green)
-                                .foregroundColor(.white)
-                                .cornerRadius(10)
-
-                                Button("Reject Truco") {
-                                    rejectTruco()
-                                }
-                                .padding()
-                                .background(Color.red)
-                                .foregroundColor(.white)
-                                .cornerRadius(10)
-
-                                Button("Retruco") {
-                                    gameEngine.handle(move: .callTruco)
-                                }
-                                .padding()
-                                .background(Color.blue)
-                                .foregroundColor(.white)
-                                .cornerRadius(10)
-                            } else if gameEngine.gameState.trucoState == .retrucoCalled && gameEngine.gameState.trucoCallerId != localPlayerId {
-                                Button("Accept Retruco") {
-                                    acceptTruco()
-                                }
-                                .padding()
-                                .background(Color.green)
-                                .foregroundColor(.white)
-                                .cornerRadius(10)
-
-                                Button("Reject Retruco") {
-                                    rejectTruco()
-                                }
-                                .padding()
-                                .background(Color.red)
-                                .foregroundColor(.white)
-                                .cornerRadius(10)
-
-                                Button("Vale Cuatro") {
-                                    gameEngine.handle(move: .callTruco)
-                                }
-                                .padding()
-                                .background(Color.blue)
-                                .foregroundColor(.white)
-                                .cornerRadius(10)
                             }
+                            .disabled(gameState.activeBet != nil || gameState.trucoState != .none)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
+                            .background(Color.purple)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
                         }
-                        HStack {
-                            if gameEngine.gameState.envidoState == .none {
-                                Button("Envido") {
-                                    callEnvido()
-                                }
-                                .disabled(gameState.activeBet != nil || gameState.trucoState != .none)
-                                .padding()
-                                .background(Color.purple)
-                                .foregroundColor(.white)
-                                .cornerRadius(10)
-                            } else if gameEngine.gameState.envidoState == .envidoCalled && gameEngine.gameState.envidoCallerId != localPlayerId {
-                                Button("Accept Envido") {
-                                    acceptEnvido()
-                                }
-                                .buttonStyle(.borderedProminent)
 
-                                Button("Reject Envido") {
-                                    rejectEnvido()
+                        // Truco Button - Available on any turn
+                        if gameState.trucoState == .none || (gameState.trucoState == .accepted && gameState.trucoCallerId == localPlayerId) {
+                            Button("Truco") {
+                                gameEngine.handle(move: .callTruco)
+                                if !isLocalPlayerTurn && gameState.gamePhase == .playing {
+                                    gameEngine.makeOpponentMove()
                                 }
-                                .buttonStyle(.bordered)
-                                .tint(.red)
-
-                                Button("Real Envido") {
-                                    gameEngine.handle(move: .callRealEnvido)
-                                }
-                                .buttonStyle(.bordered)
-                                .tint(.green)
-
-                                Button("Falta Envido") {
-                                    gameEngine.handle(move: .callFaltaEnvido)
-                                }
-                                .buttonStyle(.bordered)
-                                .tint(.yellow)
                             }
+                            .disabled(gameState.activeBet != nil || (gameState.envidoState != .none && gameState.envidoState != .accepted && gameState.envidoState != .rejected))
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
+                            .background(Color.orange)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
                         }
                     }
                 }
             }
             .blur(radius: gameState.gamePhase == .handOver || gameState.gamePhase == .roundSummary || gameState.gamePhase == .gameOver || gameState.gamePhase == .envidoSummary ? 10 : 0)
+
+            if let activeBet = gameState.activeBet {
+                ActiveBetView(
+                    bet: activeBet,
+                    players: gameState.players,
+                    gameState: gameState,
+                    localPlayerId: localPlayerId,
+                    gameEngine: $gameEngine
+                )
+            }
 
             // Overlays
             if gameState.gamePhase == .handOver {
@@ -316,4 +226,8 @@ struct GameView: View {
             }
         }
     }
+}
+
+#Preview {
+    GameView()
 }

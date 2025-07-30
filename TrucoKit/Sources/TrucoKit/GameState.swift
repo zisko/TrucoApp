@@ -119,8 +119,14 @@ public enum BetType: String, Codable {
 
 public struct ActiveBet: Codable, Hashable {
     public let betType: BetType
-    public let callerId: UUID
+    public var callerId: UUID
     public let points: Int
+
+    public init(betType: BetType, callerId: UUID, points: Int) {
+        self.betType = betType
+        self.callerId = callerId
+        self.points = points
+    }
 }
 
 // MARK: - Game State
