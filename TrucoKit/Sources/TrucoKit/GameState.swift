@@ -117,9 +117,15 @@ public enum BetType: String, Codable {
     case faltaEnvido
 }
 
+public struct ActiveBet: Codable, Hashable {
+    public let betType: BetType
+    public let callerId: UUID
+    public let points: Int
+}
+
 // MARK: - Game State
 
-@Observable public class GameState: Codable {
+public class GameState: Codable {
     public var players: [Player]
     public var deck: [Card]
     public var currentPlayerIndex: Int
@@ -129,6 +135,7 @@ public enum BetType: String, Codable {
     public var currentHandPlayedCards: [PlayedCardInfo]
     public var handOutcomes: [HandOutcome]
     public var manoPlayerId: UUID?
+    public var activeBet: ActiveBet?
 
     // Truco State
     public var trucoState: TrucoState
@@ -144,7 +151,7 @@ public enum BetType: String, Codable {
     public var envidoWinnerId: UUID?
 
     enum CodingKeys: String, CodingKey {
-        case players, deck, currentPlayerIndex, gamePhase, roundWinner, matchWinner, currentHandPlayedCards, handOutcomes, manoPlayerId, trucoState, trucoCallerId, trucoPoints, envidoState, envidoCallerId, envidoPoints, player1EnvidoPoints, player2EnvidoPoints, envidoWinnerId
+        case players, deck, currentPlayerIndex, gamePhase, roundWinner, matchWinner, currentHandPlayedCards, handOutcomes, manoPlayerId, activeBet, trucoState, trucoCallerId, trucoPoints, envidoState, envidoCallerId, envidoPoints, player1EnvidoPoints, player2EnvidoPoints, envidoWinnerId
     }
 
     public required init(from decoder: Decoder) throws {
@@ -158,6 +165,7 @@ public enum BetType: String, Codable {
         currentHandPlayedCards = try container.decode([PlayedCardInfo].self, forKey: .currentHandPlayedCards)
         handOutcomes = try container.decode([HandOutcome].self, forKey: .handOutcomes)
         manoPlayerId = try container.decode(UUID?.self, forKey: .manoPlayerId)
+        activeBet = try container.decode(ActiveBet?.self, forKey: .activeBet)
         trucoState = try container.decode(TrucoState.self, forKey: .trucoState)
         trucoCallerId = try container.decode(UUID?.self, forKey: .trucoCallerId)
         trucoPoints = try container.decode(Int.self, forKey: .trucoPoints)
@@ -180,6 +188,7 @@ public enum BetType: String, Codable {
         try container.encode(currentHandPlayedCards, forKey: .currentHandPlayedCards)
         try container.encode(handOutcomes, forKey: .handOutcomes)
         try container.encode(manoPlayerId, forKey: .manoPlayerId)
+        try container.encode(activeBet, forKey: .activeBet)
         try container.encode(trucoState, forKey: .trucoState)
         try container.encode(trucoCallerId, forKey: .trucoCallerId)
         try container.encode(trucoPoints, forKey: .trucoPoints)
@@ -201,6 +210,7 @@ public enum BetType: String, Codable {
         currentHandPlayedCards = []
         handOutcomes = []
         manoPlayerId = nil
+        activeBet = nil
         trucoState = .none
         trucoCallerId = nil
         trucoPoints = 0

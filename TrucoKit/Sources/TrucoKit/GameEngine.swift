@@ -1,8 +1,7 @@
 import Foundation
 
-@Observable public class TrucoEngine {
-    public var gameState: GameState
-    public var activeBet: BetType?
+public class TrucoEngine {
+    @Published public var gameState: GameState
 
     public init(gameState: GameState) {
         self.gameState = gameState
@@ -62,7 +61,7 @@ import Foundation
             case .none:
                 gameState.trucoState = .trucoCalled
                 gameState.trucoPoints = 2
-                activeBet = .truco
+                gameState.activeBet = ActiveBet(betType: .truco, callerId: currentPlayerId, points: 2)
             case .trucoCalled, .accepted:
                 gameState.trucoState = .retrucoCalled
                 gameState.trucoPoints = 3
@@ -78,7 +77,7 @@ import Foundation
 
         case .acceptTruco:
             gameState.trucoState = .accepted
-            activeBet = nil
+            gameState.activeBet = nil
             if let callerIndex = gameState.players.firstIndex(where: { $0.id == gameState.trucoCallerId }) {
                 gameState.currentPlayerIndex = callerIndex
             }
@@ -93,7 +92,7 @@ import Foundation
             }
             gameState.gamePhase = .roundSummary
             gameState.trucoState = .rejected
-            activeBet = nil
+            gameState.activeBet = nil
             checkMatchEnd()
 
         case .continueAfterHand:
@@ -111,7 +110,7 @@ import Foundation
             case .none:
                 gameState.envidoState = .envidoCalled
                 gameState.envidoPoints = 2
-                activeBet = .envido
+                gameState.activeBet = ActiveBet(betType: .envido, callerId: currentPlayerId, points: 2)
             case .envidoCalled:
                 gameState.envidoState = .envidoEnvidoCalled
                 gameState.envidoPoints = 4
@@ -131,8 +130,9 @@ import Foundation
 
             let basePoints = (gameState.envidoState == .envidoCalled) ? gameState.envidoPoints : 0
             gameState.envidoState = .realEnvidoCalled
-            gameState.envidoPoints = basePoints + 3
-            activeBet = .realEnvido
+            let points = basePoints + 3
+            gameState.envidoPoints = points
+            gameState.activeBet = ActiveBet(betType: .realEnvido, callerId: currentPlayerId, points: points)
             gameState.envidoCallerId = currentPlayerId
             gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
 
@@ -147,15 +147,16 @@ import Foundation
             gameState.envidoState = .faltaEnvidoCalled
             let opponentScore = gameState.players.first(where: { $0.id != currentPlayerId })?.score ?? 0
             let faltaPoints = 30 - opponentScore
-            gameState.envidoPoints = basePoints + faltaPoints
-            activeBet = .faltaEnvido
+            let points = basePoints + faltaPoints
+            gameState.envidoPoints = points
+            gameState.activeBet = ActiveBet(betType: .faltaEnvido, callerId: currentPlayerId, points: points)
             gameState.envidoCallerId = currentPlayerId
             gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
 
         case .acceptEnvido:
             resolveEnvido()
             gameState.gamePhase = .envidoSummary // NEW: Pause to show Envido results
-            activeBet = nil
+            gameState.activeBet = nil
             print("Envido accepted!")
 
         case .rejectEnvido:
@@ -176,7 +177,7 @@ import Foundation
                 }
             }
             gameState.envidoState = .rejected
-            activeBet = nil
+            gameState.activeBet = nil
 
         default:
             break

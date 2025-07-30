@@ -3,13 +3,12 @@ import SwiftUI
 import TrucoKit
 
 struct GameView: View {
-    @State var gameState: GameState
+    @ObservedObject private var gameEngine: TrucoEngine
     @State private var localPlayerId: UUID
     @State private var isHandWinnersExpanded = false
-    private var gameEngine: TrucoEngine
 
-    private var activeBet: BetType? {
-        gameEngine.activeBet
+    private var gameState: GameState {
+        gameEngine.gameState
     }
 
     var isLocalPlayerTurn: Bool {
@@ -30,9 +29,8 @@ struct GameView: View {
 
     init() {
         let initialGameState = GameState()
-        _gameState = State(initialValue: initialGameState)
+        _gameEngine = ObservedObject(wrappedValue: TrucoEngine(gameState: initialGameState))
         _localPlayerId = State(initialValue: UUID())
-        gameEngine = TrucoEngine(gameState: initialGameState)
     }
 
     func dealInitialCards() {
@@ -184,7 +182,7 @@ struct GameView: View {
                                 Button("Truco") {
                                     callTruco()
                                 }
-                                .disabled(activeBet != nil || (gameState.envidoState != .none && gameState.envidoState != .accepted && gameState.envidoState != .rejected))
+                                .disabled(gameState.activeBet != nil || (gameState.envidoState != .none && gameState.envidoState != .accepted && gameState.envidoState != .rejected))
                                 .padding()
                                 .background(Color.orange)
                                 .foregroundColor(.white)
@@ -244,7 +242,7 @@ struct GameView: View {
                                 Button("Envido") {
                                     callEnvido()
                                 }
-                                .disabled(activeBet != nil || gameState.trucoState != .none)
+                                .disabled(gameState.activeBet != nil || gameState.trucoState != .none)
                                 .padding()
                                 .background(Color.purple)
                                 .foregroundColor(.white)
