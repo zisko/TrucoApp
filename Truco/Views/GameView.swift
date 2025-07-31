@@ -6,7 +6,7 @@ struct GameView: View {
     @State private var gameState: GameState
     @State private var localPlayerId: UUID
     @State private var isHandWinnersExpanded = false
-    @State private var gameEngine: TrucoEngine
+    @State private var gameEngine: TrucoGameEngine
     @State private var trucoAlertShown = false
 
     var isLocalPlayerTurn: Bool {
@@ -26,7 +26,10 @@ struct GameView: View {
         let initialGameState = GameState()
         _gameState = State(initialValue: initialGameState)
         _localPlayerId = State(initialValue: UUID())
-        gameEngine = TrucoEngine(gameState: initialGameState)
+
+        // Use the factory to create the engine
+        // Change .original to .refactored to use the new state machine engine
+        gameEngine = GameEngineFactory.createEngine(type: .refactored, gameState: initialGameState)
     }
 
     func dealInitialCards() {
@@ -202,6 +205,56 @@ struct GameView: View {
                             .foregroundColor(.white)
                             .cornerRadius(10)
                         }
+
+                        // Retruco Button - Available when Truco is accepted and it's the opponent's turn
+                        if gameState.trucoState == .accepted
+                            && gameState.trucoCallerId != localPlayerId
+                            && gameState.trucoPoints == 2
+                        {
+                            Button("Retruco") {
+                                gameEngine.handle(move: .callTruco)
+                                if !isLocalPlayerTurn
+                                    && gameState.gamePhase == .playing
+                                {
+                                    gameEngine.makeOpponentMove()
+                                }
+                            }
+                            .disabled(
+                                gameState.envidoState != .none
+                                    && gameState.envidoState != .accepted
+                                    && gameState.envidoState != .rejected
+                            )
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                        }
+
+                        // Vale Cuatro Button - Available when Retruco is accepted and it's the opponent's turn
+                        if gameState.trucoState == .accepted
+                            && gameState.trucoCallerId != localPlayerId
+                            && gameState.trucoPoints == 3
+                        {
+                            Button("Vale Cuatro") {
+                                gameEngine.handle(move: .callTruco)
+                                if !isLocalPlayerTurn
+                                    && gameState.gamePhase == .playing
+                                {
+                                    gameEngine.makeOpponentMove()
+                                }
+                            }
+                            .disabled(
+                                gameState.envidoState != .none
+                                    && gameState.envidoState != .accepted
+                                    && gameState.envidoState != .rejected
+                            )
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
+                            .background(Color.purple)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                        }
                     }
                 }
             }
@@ -301,6 +354,50 @@ struct GameView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
                         .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                    }
+                }
+                .padding(24)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Color(.systemBackground))
+                        .shadow(
+                            color: .black.opacity(0.1),
+                            radius: 10,
+                            x: 0,
+                            y: 5
+                        )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.orange.opacity(0.3), lineWidth: 2)
+                )
+            } else if gameState.trucoState == .valeCuatroCalled
+                && gameState.trucoCallerId != localPlayerId
+            {
+                VStack(spacing: 12) {
+                    Text("Vale Cuatro Called!")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.orange)
+
+                    HStack(spacing: 12) {
+                        Button("Accept Vale Cuatro") {
+                            gameEngine.handle(move: .acceptTruco)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.green)
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+
+                        Button("Reject Vale Cuatro") {
+                            gameEngine.handle(move: .rejectTruco)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.red)
                         .foregroundColor(.white)
                         .cornerRadius(8)
                     }
