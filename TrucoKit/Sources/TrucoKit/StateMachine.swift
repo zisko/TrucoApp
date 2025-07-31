@@ -759,7 +759,7 @@ public class EnvidoStateMachine {
         ))
 
         // All states -> accepted
-        for fromState in [.envidoCalled, .envidoEnvidoCalled, .realEnvidoCalled, .faltaEnvidoCalled] {
+        for fromState in [EnvidoState.envidoCalled, .envidoEnvidoCalled, .realEnvidoCalled, .faltaEnvidoCalled] {
             stateMachine.addTransition(StateTransition(
                 from: fromState,
                 to: .accepted,
@@ -772,7 +772,7 @@ public class EnvidoStateMachine {
         }
 
         // All states -> rejected
-        for fromState in [.envidoCalled, .envidoEnvidoCalled, .realEnvidoCalled, .faltaEnvidoCalled] {
+        for fromState in [EnvidoState.envidoCalled, .envidoEnvidoCalled, .realEnvidoCalled, .faltaEnvidoCalled] {
             stateMachine.addTransition(StateTransition(
                 from: fromState,
                 to: .rejected,
