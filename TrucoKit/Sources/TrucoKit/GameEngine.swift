@@ -1,6 +1,8 @@
 import Foundation
 
-public class TrucoEngine {
+/// The original engine to play the game of Truco.
+/// This implementation uses implicit state management.
+public class TrucoEngine: TrucoGameEngine {
     public var gameState: GameState
 
     public init(gameState: GameState) {
@@ -385,11 +387,10 @@ public class TrucoEngine {
         )
     }
 
-    private func checkMatchEnd() {
-        if let winningPlayer = gameState.players.first(where: { $0.score >= 30 }
-        ) {
-            gameState.gamePhase = .gameOver
+    public func checkMatchEnd() {
+        if let winningPlayer = gameState.players.first(where: { $0.score >= 30 }) {
             gameState.matchWinner = winningPlayer.id
+            gameState.gamePhase = .gameOver
             print("Match over! Winner is \(winningPlayer.name)")
         }
     }
