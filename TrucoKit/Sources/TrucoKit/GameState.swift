@@ -125,8 +125,6 @@ public struct HandOutcome: Codable, Hashable {
 
     // Truco State
     public var trucoState: TrucoState
-    public var trucoCallerId: UUID?
-    public var trucoPoints: Int
 
     // Envido State
     public var envidoState: EnvidoState
@@ -147,8 +145,6 @@ public struct HandOutcome: Codable, Hashable {
              handOutcomes,
              manoPlayerId,
              trucoState,
-             trucoCallerId,
-             trucoPoints,
              envidoState,
              envidoCallerId,
              envidoPoints,
@@ -178,8 +174,6 @@ public struct HandOutcome: Codable, Hashable {
         )
         manoPlayerId = try container.decode(UUID?.self, forKey: .manoPlayerId)
         trucoState = try container.decode(TrucoState.self, forKey: .trucoState)
-        trucoCallerId = try container.decode(UUID?.self, forKey: .trucoCallerId)
-        trucoPoints = try container.decode(Int.self, forKey: .trucoPoints)
         envidoState = try container.decode(
             EnvidoState.self,
             forKey: .envidoState
@@ -218,8 +212,6 @@ public struct HandOutcome: Codable, Hashable {
         try container.encode(handOutcomes, forKey: .handOutcomes)
         try container.encode(manoPlayerId, forKey: .manoPlayerId)
         try container.encode(trucoState, forKey: .trucoState)
-        try container.encode(trucoCallerId, forKey: .trucoCallerId)
-        try container.encode(trucoPoints, forKey: .trucoPoints)
         try container.encode(envidoState, forKey: .envidoState)
         try container.encode(envidoCallerId, forKey: .envidoCallerId)
         try container.encode(envidoPoints, forKey: .envidoPoints)
@@ -240,8 +232,6 @@ public struct HandOutcome: Codable, Hashable {
         manoPlayerId = nil
 
         trucoState = .none
-        trucoCallerId = nil
-        trucoPoints = 0
         envidoState = .none
         envidoCallerId = nil
         envidoPoints = 0
@@ -270,13 +260,15 @@ public enum GamePhase: String, Codable {
     case gameOver
 }
 
-public enum TrucoState: String, Codable {
+public enum TrucoState: Codable, Equatable {
     case none
-    case trucoCalled
-    case retrucoCalled
-    case valeCuatroCalled
-    case accepted
-    case rejected
+    case called(caller: UUID)
+    case accepted(caller: UUID)
+    case retrucoCalled(caller: UUID)
+    case retrucoAccepted(caller: UUID)
+    case valeCuatroCalled(caller: UUID)
+    case valeCuatroAccepted(caller: UUID)
+    case rejected(caller: UUID)
 }
 
 public enum EnvidoState: String, Codable {

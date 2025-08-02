@@ -48,66 +48,51 @@ public class TrucoEngine: TrucoGameEngine {
             }
 
         case .callTruco:
-            guard
-                gameState.envidoState == .none
-                || gameState.envidoState == .rejected
-                || gameState.envidoState == .accepted
-            else {
-                print(
-                    "Error: Cannot call Truco while Envido is being resolved."
-                )
-                return
-            }
-            guard gameState.trucoState != .rejected else { return }
-
-            let currentPlayerId = gameState.players[
-                gameState.currentPlayerIndex
-            ].id
-
-            // A player cannot raise their own bet
-            if gameState.trucoCallerId == currentPlayerId { return }
-
+            let currentPlayerId = gameState.players[gameState.currentPlayerIndex].id
             switch gameState.trucoState {
             case .none:
-                gameState.trucoState = .trucoCalled
-                gameState.trucoPoints = 2
-            case .trucoCalled, .accepted:
-                gameState.trucoState = .retrucoCalled
-                gameState.trucoPoints = 3
-            case .retrucoCalled:
-                gameState.trucoState = .valeCuatroCalled
-                gameState.trucoPoints = 4
+                gameState.trucoState = .called(caller: currentPlayerId)
+            case let .accepted(caller) where caller != currentPlayerId:
+                gameState.trucoState = .retrucoCalled(caller: currentPlayerId)
+            case let .retrucoAccepted(caller) where caller != currentPlayerId:
+                gameState.trucoState = .valeCuatroCalled(caller: currentPlayerId)
             default:
-                return // Invalid state to call truco
+                print("Invalid state to call truco")
+                return
             }
-
-            gameState.trucoCallerId = currentPlayerId
-            gameState.currentPlayerIndex =
-                (gameState.currentPlayerIndex + 1) % gameState.players.count
+            gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
 
         case .acceptTruco:
-            gameState.trucoState = .accepted
-            if let callerIndex = gameState.players.firstIndex(where: {
-                $0.id == gameState.trucoCallerId
-            }) {
-                gameState.currentPlayerIndex = callerIndex
+            let currentPlayerId = gameState.players[gameState.currentPlayerIndex].id
+            switch gameState.trucoState {
+            case let .called(caller):
+                gameState.trucoState = .accepted(caller: caller)
+                gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
+            case let .retrucoCalled(caller):
+                gameState.trucoState = .retrucoAccepted(caller: caller)
+                gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
+            case let .valeCuatroCalled(caller):
+                gameState.trucoState = .valeCuatroAccepted(caller: caller)
+                gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
+            default:
+                print("Invalid state to accept truco")
+                return
             }
-            print("Truco accepted!")
 
         case .rejectTruco:
-            if let callerId = gameState.trucoCallerId {
-                if let callerIndex = gameState.players.firstIndex(where: {
-                    $0.id == callerId
-                }) {
-                    let pointsAwarded =
-                        (gameState.trucoPoints > 1)
-                            ? gameState.trucoPoints - 1 : 1
-                    gameState.players[callerIndex].score += pointsAwarded
-                }
+            let currentPlayerId = gameState.players[gameState.currentPlayerIndex].id
+            switch gameState.trucoState {
+            case let .called(caller),
+                 let .retrucoCalled(caller),
+                 let .valeCuatroCalled(caller):
+                gameState.trucoState = .rejected(caller: caller)
+                awardRoundPoints()
+                gameState.gamePhase = .roundSummary
+                checkMatchEnd()
+            default:
+                print("Invalid state to reject truco")
+                return
             }
-            gameState.gamePhase = .roundSummary
-            gameState.trucoState = .rejected
-            checkMatchEnd()
 
         case .continueAfterHand:
             continueAfterHand()
@@ -255,8 +240,6 @@ public class TrucoEngine: TrucoGameEngine {
         gameState.matchWinner = nil // Clear match winner
         gameState.manoPlayerId = player1Id // Player 1 is mano for the first round
         gameState.trucoState = .none // Reset truco state
-        gameState.trucoCallerId = nil // Reset truco caller
-        gameState.trucoPoints = 0 // Reset truco points
         gameState.envidoState = .none // Reset envido state
         gameState.envidoCallerId = nil // Reset envido caller
         gameState.envidoPoints = 0 // Reset envido points
@@ -366,19 +349,23 @@ public class TrucoEngine: TrucoGameEngine {
 
     private func awardRoundPoints() {
         guard let winnerId = gameState.roundWinner,
-              let winnerIndex = gameState.players.firstIndex(where: {
-                  $0.id == winnerId
-              })
+              let winnerIndex = gameState.players.firstIndex(where: { $0.id == winnerId })
         else { return }
 
         let points: Int
         switch gameState.trucoState {
-        case .none, .rejected:
+        case .none:
             points = 1
-        case .accepted:
-            points = gameState.trucoPoints
+        case let .rejected(caller):
+            points = 1
+        case let .accepted(caller):
+            points = 2
+        case let .retrucoAccepted(caller):
+            points = 3
+        case let .valeCuatroAccepted(caller):
+            points = 4
         default:
-            points = gameState.trucoPoints
+            points = 0
         }
 
         gameState.players[winnerIndex].score += points
@@ -421,8 +408,6 @@ public class TrucoEngine: TrucoGameEngine {
         gameState.roundWinner = nil
         gameState.gamePhase = .playing
         gameState.trucoState = .none // Reset truco state
-        gameState.trucoCallerId = nil // Reset truco caller
-        gameState.trucoPoints = 0
         gameState.envidoState = .none // Reset envido state
         gameState.envidoCallerId = nil // Reset envido caller
         gameState.envidoPoints = 0 // Reset envido points
@@ -534,13 +519,16 @@ public class TrucoEngine: TrucoGameEngine {
         let cpuPlayer = CPUPlayer(personality: .balanced) // We can make this configurable later
 
         // 1. Respond to Truco call
-        if gameState.trucoState == .trucoCalled {
+        switch gameState.trucoState {
+        case .called, .retrucoCalled, .valeCuatroCalled:
             if Double.random(in: 0 ... 1) < cpuPlayer.acceptBetChance {
                 handle(move: .acceptTruco)
             } else {
                 handle(move: .rejectTruco)
             }
             return
+        default:
+            break
         }
 
         // 2. Respond to Envido call

@@ -183,77 +183,41 @@ struct GameView: View {
                         }
 
                         // Truco Button - Available on any turn when it's the player's turn
-                        if gameState.trucoState == .none
-                            || gameState.trucoState == .accepted
-                        {
+                        switch gameState.trucoState {
+                        case .none:
                             Button("Truco") {
                                 gameEngine.handle(move: .callTruco)
-                                if !isLocalPlayerTurn
-                                    && gameState.gamePhase == .playing
-                                {
-                                    gameEngine.makeOpponentMove()
-                                }
                             }
-                            .disabled(
-                                gameState.envidoState != .none
-                                    && gameState.envidoState != .accepted
-                                    && gameState.envidoState != .rejected
-                            )
+                            .disabled(gameState.envidoState != .none && gameState.envidoState != .accepted && gameState.envidoState != .rejected)
                             .padding(.horizontal, 20)
                             .padding(.vertical, 10)
                             .background(Color.orange)
                             .foregroundColor(.white)
                             .cornerRadius(10)
-                        }
-
-                        // Retruco Button - Available when Truco is accepted and it's the opponent's turn
-                        if gameState.trucoState == .accepted
-                            && gameState.trucoCallerId != localPlayerId
-                            && gameState.trucoPoints == 2
-                        {
-                            Button("Retruco") {
-                                gameEngine.handle(move: .callTruco)
-                                if !isLocalPlayerTurn
-                                    && gameState.gamePhase == .playing
-                                {
-                                    gameEngine.makeOpponentMove()
+                        case let .accepted(caller):
+                            if caller != localPlayerId {
+                                Button("Retruco") {
+                                    gameEngine.handle(move: .callTruco)
                                 }
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 10)
+                                .background(Color.blue)
+                                .foregroundColor(.white)
+                                .cornerRadius(10)
                             }
-                            .disabled(
-                                gameState.envidoState != .none
-                                    && gameState.envidoState != .accepted
-                                    && gameState.envidoState != .rejected
-                            )
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 10)
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
-                        }
-
-                        // Vale Cuatro Button - Available when Retruco is accepted and it's the opponent's turn
-                        if gameState.trucoState == .accepted
-                            && gameState.trucoCallerId != localPlayerId
-                            && gameState.trucoPoints == 3
-                        {
-                            Button("Vale Cuatro") {
-                                gameEngine.handle(move: .callTruco)
-                                if !isLocalPlayerTurn
-                                    && gameState.gamePhase == .playing
-                                {
-                                    gameEngine.makeOpponentMove()
+                        case let .retrucoAccepted(caller):
+                            if caller != localPlayerId {
+                                Button("Vale Cuatro") {
+                                    gameEngine.handle(move: .callTruco)
                                 }
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 10)
+                                .background(Color.purple)
+                                .foregroundColor(.white)
+                                .cornerRadius(10)
                             }
-                            .disabled(
-                                gameState.envidoState != .none
-                                    && gameState.envidoState != .accepted
-                                    && gameState.envidoState != .rejected
-                            )
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 10)
-                            .background(Color.purple)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
+                        default:
+                            EmptyView()
                         }
                     }
                 }
@@ -267,9 +231,7 @@ struct GameView: View {
             )
 
             // Accept/Reject Buttons Overlay
-            if gameState.trucoState == .trucoCalled
-                && gameState.trucoCallerId != localPlayerId
-            {
+            if case let .called(caller) = gameState.trucoState, caller != localPlayerId {
                 VStack(spacing: 12) {
                     Text("Truco Called!")
                         .font(.title2)
@@ -320,9 +282,7 @@ struct GameView: View {
                     RoundedRectangle(cornerRadius: 16)
                         .stroke(Color.orange.opacity(0.3), lineWidth: 2)
                 )
-            } else if gameState.trucoState == .retrucoCalled
-                && gameState.trucoCallerId != localPlayerId
-            {
+            } else if case let .retrucoCalled(caller) = gameState.trucoState, caller != localPlayerId {
                 VStack(spacing: 12) {
                     Text("Retruco Called!")
                         .font(.title2)
@@ -373,9 +333,7 @@ struct GameView: View {
                     RoundedRectangle(cornerRadius: 16)
                         .stroke(Color.orange.opacity(0.3), lineWidth: 2)
                 )
-            } else if gameState.trucoState == .valeCuatroCalled
-                && gameState.trucoCallerId != localPlayerId
-            {
+            } else if case let .valeCuatroCalled(caller) = gameState.trucoState, caller != localPlayerId {
                 VStack(spacing: 12) {
                     Text("Vale Cuatro Called!")
                         .font(.title2)
@@ -471,34 +429,16 @@ struct GameView: View {
             }
 
             // Truco Result Feedback
-            if (gameState.trucoState == .accepted || gameState.trucoState == .rejected) && trucoAlertShown {
+            if case .accepted = gameState.trucoState, trucoAlertShown {
                 VStack(spacing: 16) {
                     HStack {
-                        Image(systemName: gameState.trucoState == .accepted ? "checkmark.circle.fill" : "xmark.circle.fill")
-                            .foregroundColor(gameState.trucoState == .accepted ? .green : .red)
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
                             .font(.title)
-                        Text(gameState.trucoState == .accepted ? "Truco Accepted!" : "Truco Rejected!")
+                        Text("Truco Accepted!")
                             .font(.title2)
                             .fontWeight(.bold)
-                            .foregroundColor(gameState.trucoState == .accepted ? .green : .red)
-                    }
-
-                    if gameState.trucoState == .accepted {
-                        Text("\(gameState.trucoPoints) points at stake")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-                    } else if gameState.trucoState == .rejected {
-                        if let callerId = gameState.trucoCallerId,
-                           let caller = gameState.players.first(where: {
-                               $0.id == callerId
-                           })
-                        {
-                            Text(
-                                "\(caller.name) gets \(gameState.trucoPoints > 1 ? gameState.trucoPoints - 1 : 1) point(s)"
-                            )
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-                        }
+                            .foregroundColor(.green)
                     }
                 }
                 .padding(24)
@@ -514,7 +454,42 @@ struct GameView: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 16)
-                        .stroke((gameState.trucoState == .accepted ? Color.green : Color.red).opacity(0.3), lineWidth: 2)
+                        .stroke(Color.green.opacity(0.3), lineWidth: 2)
+                )
+                .transition(.scale.combined(with: .opacity))
+                .onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        withAnimation {
+                            trucoAlertShown = false
+                        }
+                    }
+                }
+            } else if case .rejected = gameState.trucoState, trucoAlertShown {
+                VStack(spacing: 16) {
+                    HStack {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.red)
+                            .font(.title)
+                        Text("Truco Rejected!")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.red)
+                    }
+                }
+                .padding(24)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Color(.systemBackground))
+                        .shadow(
+                            color: .black.opacity(0.1),
+                            radius: 10,
+                            x: 0,
+                            y: 5
+                        )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.red.opacity(0.3), lineWidth: 2)
                 )
                 .transition(.scale.combined(with: .opacity))
                 .onAppear {
