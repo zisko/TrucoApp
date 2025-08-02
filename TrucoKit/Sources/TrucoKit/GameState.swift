@@ -260,7 +260,7 @@ public enum GamePhase: String, Codable {
     case gameOver
 }
 
-public enum TrucoState: Codable, Equatable {
+public enum TrucoState: Codable, Equatable, Hashable {
     case none
     case called(caller: UUID)
     case accepted(caller: UUID)

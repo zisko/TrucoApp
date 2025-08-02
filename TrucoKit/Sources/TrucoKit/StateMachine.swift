@@ -129,12 +129,6 @@ public class GamePhaseStateMachine {
             guard gameState.currentHandPlayedCards.count <= 2 else { return false } // Max 2 cards per hand
 
             // Validate betting states
-            if gameState.trucoState != .none {
-                guard gameState.trucoCallerId != nil else { return false }
-                guard gameState.trucoPoints >= 1 else { return false }
-                guard gameState.trucoPoints <= 4 else { return false }
-            }
-
             if gameState.envidoState != .none {
                 guard gameState.envidoCallerId != nil else { return false }
                 guard gameState.envidoPoints >= 1 else { return false }
@@ -311,8 +305,6 @@ public class GamePhaseStateMachine {
                 gameState.handOutcomes = []
                 gameState.roundWinner = nil
                 gameState.trucoState = .none
-                gameState.trucoCallerId = nil
-                gameState.trucoPoints = 0
                 gameState.envidoState = .none
                 gameState.envidoCallerId = nil
                 gameState.envidoPoints = 0
@@ -371,12 +363,6 @@ public class TrucoStateMachine {
             guard gameState.currentHandPlayedCards.count <= 2 else { return false } // Max 2 cards per hand
 
             // Validate betting states
-            if gameState.trucoState != .none {
-                guard gameState.trucoCallerId != nil else { return false }
-                guard gameState.trucoPoints >= 1 else { return false }
-                guard gameState.trucoPoints <= 4 else { return false }
-            }
-
             if gameState.envidoState != .none {
                 guard gameState.envidoCallerId != nil else { return false }
                 guard gameState.envidoPoints >= 1 else { return false }
@@ -386,10 +372,10 @@ public class TrucoStateMachine {
             return true
         }
 
-        // none -> trucoCalled
+        // none -> called
         stateMachine.addTransition(StateTransition(
             from: .none,
-            to: .trucoCalled,
+            to: .called(caller: UUID()),
             condition: { gameState in
                 // Sanity check: ensure game state is valid for truco call
                 guard validateGameState(gameState) else { return false }
@@ -399,93 +385,94 @@ public class TrucoStateMachine {
                 return true
             },
             action: { gameState in
-                gameState.trucoState = .trucoCalled
-                gameState.trucoPoints = 2
+                let currentPlayerId = gameState.players[gameState.currentPlayerIndex].id
+                gameState.trucoState = .called(caller: currentPlayerId)
             },
             errorMessage: "Cannot call Truco while Envido is being resolved"
         ))
 
-        // trucoCalled -> retrucoCalled
+        // called -> retrucoCalled
         stateMachine.addTransition(StateTransition(
-            from: .trucoCalled,
-            to: .retrucoCalled,
+            from: .called(caller: UUID()),
+            to: .retrucoCalled(caller: UUID()),
             condition: { gameState in
                 // Sanity check: ensure game state is valid for retruco call
                 guard validateGameState(gameState) else { return false }
-                guard gameState.currentPlayerIndex < gameState.players.count else { return false }
-                guard gameState.trucoCallerId != gameState.players[gameState.currentPlayerIndex].id else { return false }
-                return true
+                guard case let .called(caller) = gameState.trucoState else { return false }
+                let currentPlayerId = gameState.players[gameState.currentPlayerIndex].id
+                return caller != currentPlayerId
             },
             action: { gameState in
-                gameState.trucoState = .retrucoCalled
-                gameState.trucoPoints = 3
+                let currentPlayerId = gameState.players[gameState.currentPlayerIndex].id
+                gameState.trucoState = .retrucoCalled(caller: currentPlayerId)
             },
             errorMessage: "Cannot raise your own bet"
         ))
 
         // retrucoCalled -> valeCuatroCalled
         stateMachine.addTransition(StateTransition(
-            from: .retrucoCalled,
-            to: .valeCuatroCalled,
+            from: .retrucoCalled(caller: UUID()),
+            to: .valeCuatroCalled(caller: UUID()),
             condition: { gameState in
                 // Sanity check: ensure game state is valid for valeCuatro call
                 guard validateGameState(gameState) else { return false }
-                guard gameState.currentPlayerIndex < gameState.players.count else { return false }
-                guard gameState.trucoCallerId != gameState.players[gameState.currentPlayerIndex].id else { return false }
-                return true
+                guard case let .retrucoCalled(caller) = gameState.trucoState else { return false }
+                let currentPlayerId = gameState.players[gameState.currentPlayerIndex].id
+                return caller != currentPlayerId
             },
             action: { gameState in
-                gameState.trucoState = .valeCuatroCalled
-                gameState.trucoPoints = 4
+                let currentPlayerId = gameState.players[gameState.currentPlayerIndex].id
+                gameState.trucoState = .valeCuatroCalled(caller: currentPlayerId)
             },
             errorMessage: "Cannot raise your own bet"
         ))
 
-        // trucoCalled -> accepted
+        // called -> accepted
         stateMachine.addTransition(StateTransition(
-            from: .trucoCalled,
-            to: .accepted,
+            from: .called(caller: UUID()),
+            to: .accepted(caller: UUID()),
             condition: { _ in true },
             action: { gameState in
-                gameState.trucoState = .accepted
+                guard case let .called(caller) = gameState.trucoState else { return }
+                gameState.trucoState = .accepted(caller: caller)
             },
             errorMessage: "Cannot accept Truco"
         ))
 
-        // retrucoCalled -> accepted
+        // retrucoCalled -> retrucoAccepted
         stateMachine.addTransition(StateTransition(
-            from: .retrucoCalled,
-            to: .accepted,
+            from: .retrucoCalled(caller: UUID()),
+            to: .retrucoAccepted(caller: UUID()),
             condition: { _ in true },
             action: { gameState in
-                gameState.trucoState = .accepted
+                guard case let .retrucoCalled(caller) = gameState.trucoState else { return }
+                gameState.trucoState = .retrucoAccepted(caller: caller)
             },
             errorMessage: "Cannot accept Retruco"
         ))
 
-        // valeCuatroCalled -> accepted
+        // valeCuatroCalled -> valeCuatroAccepted
         stateMachine.addTransition(StateTransition(
-            from: .valeCuatroCalled,
-            to: .accepted,
+            from: .valeCuatroCalled(caller: UUID()),
+            to: .valeCuatroAccepted(caller: UUID()),
             condition: { _ in true },
             action: { gameState in
-                gameState.trucoState = .accepted
+                guard case let .valeCuatroCalled(caller) = gameState.trucoState else { return }
+                gameState.trucoState = .valeCuatroAccepted(caller: caller)
             },
             errorMessage: "Cannot accept Vale Cuatro"
         ))
 
-        // trucoCalled -> rejected
+        // called -> rejected
         stateMachine.addTransition(StateTransition(
-            from: .trucoCalled,
-            to: .rejected,
+            from: .called(caller: UUID()),
+            to: .rejected(caller: UUID()),
             condition: { _ in true },
             action: { gameState in
-                gameState.trucoState = .rejected
-                if let callerId = gameState.trucoCallerId,
-                   let callerIndex = gameState.players.firstIndex(where: { $0.id == callerId })
-                {
-                    let pointsAwarded = gameState.trucoPoints > 1 ? gameState.trucoPoints - 1 : 1
-                    gameState.players[callerIndex].score += pointsAwarded
+                guard case let .called(caller) = gameState.trucoState else { return }
+                gameState.trucoState = .rejected(caller: caller)
+                if let callerIndex = gameState.players.firstIndex(where: { $0.id == caller }) {
+                    gameState.players[callerIndex].score += 1
                 }
             },
             errorMessage: "Cannot reject Truco"
@@ -493,16 +480,14 @@ public class TrucoStateMachine {
 
         // retrucoCalled -> rejected
         stateMachine.addTransition(StateTransition(
-            from: .retrucoCalled,
-            to: .rejected,
+            from: .retrucoCalled(caller: UUID()),
+            to: .rejected(caller: UUID()),
             condition: { _ in true },
             action: { gameState in
-                gameState.trucoState = .rejected
-                if let callerId = gameState.trucoCallerId,
-                   let callerIndex = gameState.players.firstIndex(where: { $0.id == callerId })
-                {
-                    let pointsAwarded = gameState.trucoPoints > 1 ? gameState.trucoPoints - 1 : 1
-                    gameState.players[callerIndex].score += pointsAwarded
+                guard case let .retrucoCalled(caller) = gameState.trucoState else { return }
+                gameState.trucoState = .rejected(caller: caller)
+                if let callerIndex = gameState.players.firstIndex(where: { $0.id == caller }) {
+                    gameState.players[callerIndex].score += 2
                 }
             },
             errorMessage: "Cannot reject Retruco"
@@ -510,16 +495,14 @@ public class TrucoStateMachine {
 
         // valeCuatroCalled -> rejected
         stateMachine.addTransition(StateTransition(
-            from: .valeCuatroCalled,
-            to: .rejected,
+            from: .valeCuatroCalled(caller: UUID()),
+            to: .rejected(caller: UUID()),
             condition: { _ in true },
             action: { gameState in
-                gameState.trucoState = .rejected
-                if let callerId = gameState.trucoCallerId,
-                   let callerIndex = gameState.players.firstIndex(where: { $0.id == callerId })
-                {
-                    let pointsAwarded = gameState.trucoPoints > 1 ? gameState.trucoPoints - 1 : 1
-                    gameState.players[callerIndex].score += pointsAwarded
+                guard case let .valeCuatroCalled(caller) = gameState.trucoState else { return }
+                gameState.trucoState = .rejected(caller: caller)
+                if let callerIndex = gameState.players.firstIndex(where: { $0.id == caller }) {
+                    gameState.players[callerIndex].score += 3
                 }
             },
             errorMessage: "Cannot reject Vale Cuatro"
@@ -576,12 +559,6 @@ public class EnvidoStateMachine {
             guard gameState.currentHandPlayedCards.count <= 2 else { return false } // Max 2 cards per hand
 
             // Validate betting states
-            if gameState.trucoState != .none {
-                guard gameState.trucoCallerId != nil else { return false }
-                guard gameState.trucoPoints >= 1 else { return false }
-                guard gameState.trucoPoints <= 4 else { return false }
-            }
-
             if gameState.envidoState != .none {
                 guard gameState.envidoCallerId != nil else { return false }
                 guard gameState.envidoPoints >= 1 else { return false }

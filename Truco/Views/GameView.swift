@@ -548,8 +548,12 @@ struct GameView: View {
                 .foregroundColor(.white)
             }
         }
-        .onChange(of: gameState.trucoState) { _, newValue in
-            if newValue == .accepted || newValue == .rejected {
+        .onChange(of: gameState.trucoState) { newValue in
+            if case .accepted = newValue {
+                withAnimation {
+                    trucoAlertShown = true
+                }
+            } else if case .rejected = newValue {
                 withAnimation {
                     trucoAlertShown = true
                 }

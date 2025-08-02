@@ -7,7 +7,8 @@ struct RoundSummaryView: View {
 
     private var roundWinnerName: String {
         guard let winnerId = gameState.roundWinner,
-              let winner = gameState.players.first(where: { $0.id == winnerId }) else {
+              let winner = gameState.players.first(where: { $0.id == winnerId })
+        else {
             return "No one"
         }
         return winner.name
@@ -15,36 +16,33 @@ struct RoundSummaryView: View {
 
     private var pointsBreakdown: [(label: String, value: String)] {
         var breakdown = [(String, String)]()
-        
+
         // Round points (excluding truco)
-        if gameState.trucoState == .none || gameState.trucoState == .rejected {
+        if case .none = gameState.trucoState {
             breakdown.append(("Round Winner", "+1"))
         }
-        
+
         // Truco points
-        if gameState.trucoState == .accepted || gameState.trucoState == .retrucoCalled || gameState.trucoState == .valeCuatroCalled {
-            let trucoLabel: String
-            switch gameState.trucoState {
-            case .retrucoCalled:
-                trucoLabel = "Retruco"
-            case .valeCuatroCalled:
-                trucoLabel = "Vale Cuatro"
-            default:
-                trucoLabel = "Truco"
-            }
-            breakdown.append((trucoLabel, "+\(gameState.trucoPoints)"))
-        } else if gameState.trucoState == .rejected {
-            let points = (gameState.trucoPoints > 0) ? (gameState.trucoPoints - 1) : 1
-            breakdown.append(("Truco Rejected", "+\(points)"))
+        switch gameState.trucoState {
+        case let .accepted(caller):
+            breakdown.append(("Truco", "+2"))
+        case let .retrucoAccepted(caller):
+            breakdown.append(("Retruco", "+3"))
+        case let .valeCuatroAccepted(caller):
+            breakdown.append(("Vale Cuatro", "+4"))
+        case let .rejected(caller):
+            breakdown.append(("Truco Rejected", "+1"))
+        default:
+            break
         }
-        
+
         // Envido points
         if gameState.envidoState == .accepted {
             breakdown.append(("Envido", "+\(gameState.envidoPoints)"))
         } else if gameState.envidoState == .rejected {
             breakdown.append(("Envido Rejected", "+1"))
         }
-        
+
         return breakdown
     }
 
@@ -61,7 +59,7 @@ struct RoundSummaryView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Points Awarded:")
                     .font(.headline)
-                
+
                 ForEach(pointsBreakdown, id: \.label) { item in
                     HStack {
                         Text(item.label)
