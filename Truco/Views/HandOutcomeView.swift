@@ -4,92 +4,66 @@ import TrucoKit
 struct HandOutcomeView: View {
     let outcome: HandOutcome
     let players: [Player]
+    var localPlayerId: UUID?
     var onContinue: () -> Void
 
     private func playerName(for id: UUID) -> String {
-        return players.first(where: { $0.id == id })?.name ?? "Unknown Player"
+        guard let localPlayerId else {
+            return players.first(where: { $0.id == id })?.name ?? "—"
+        }
+        return PlayerNaming.displayName(for: id, localPlayerId: localPlayerId)
     }
 
     private var outcomeDescription: String {
         guard let winnerId = outcome.winnerId,
-            let winningCard = outcome.winningCard,
-            let losingCard = outcome.losingCard
+              let winningCard = outcome.winningCard,
+              let losingCard = outcome.losingCard
         else {
             return "It's a tie!"
         }
-
         let winnerName = playerName(for: winnerId)
-        return
-            "\(winnerName) wins with \(winningCard.rank.description) of \(winningCard.suit.rawValue) against \(losingCard.rank.description) of \(losingCard.suit.rawValue)."
+        return "\(winnerName) won with the \(winningCard.rank.description) of \(winningCard.suit.rawValue.capitalized) over the \(losingCard.rank.description) of \(losingCard.suit.rawValue.capitalized)."
     }
 
     var body: some View {
-        VStack(spacing: 20) {
-            Text("Hand Over")
-                .font(.largeTitle)
-                .fontWeight(.bold)
+        VStack(spacing: 18) {
+            Text("Trick Over")
+                .font(.title.weight(.heavy))
+                .foregroundStyle(Theme.gold)
 
-            HStack(spacing: 30) {
+            HStack(spacing: 24) {
                 if let winningCard = outcome.winningCard {
-                    VStack {
-                        Text("Winner")
-                            .font(.headline)
-                        PlayingCardView(card: winningCard)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(Color.green, lineWidth: 4)
-                            )
-                    }
+                    cardColumn(title: "Winner", card: winningCard, tint: Theme.positive)
                 }
-
                 if let losingCard = outcome.losingCard {
-                    VStack {
-                        Text("Loser")
-                            .font(.headline)
-                        PlayingCardView(card: losingCard)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(Color.red, lineWidth: 4)
-                            )
-                    }
+                    cardColumn(title: "Loser", card: losingCard, tint: Theme.danger)
                 }
             }
 
             Text(outcomeDescription)
-                .font(.title2)
+                .font(.callout)
                 .multilineTextAlignment(.center)
-                .padding()
+                .foregroundStyle(Theme.cream.opacity(0.9))
 
-            Button("Continue") {
-                onContinue()
-            }
-            .padding()
-            .background(Color.blue)
-            .foregroundColor(.white)
-            .cornerRadius(10)
+            Button("Continue", action: onContinue)
+                .buttonStyle(PrimaryActionButtonStyle())
         }
-        .padding(30)
-        .background(Color.black.opacity(0.85))
-        .cornerRadius(20)
-        .foregroundColor(.white)
-        .shadow(radius: 20)
+        .padding(28)
+        .frame(maxWidth: 420)
+        .glassPanel()
     }
-}
 
-#Preview {
-    let winnerUUID = UUID()
-    let handOutcome = HandOutcome(
-        winnerId: winnerUUID,
-        winningCard: Card(rank: .ace, suit: .espadas),
-        losingCard: Card(rank: .five, suit: .copas)
-    )
-    let players: [Player] = [
-        Player(id: winnerUUID, name: "player1", hand: [], score: 20),
-        Player(id: UUID(), name: "player2", hand: [], score: 20),
-    ]
-    HandOutcomeView(
-        outcome: handOutcome,
-        players: [],
-        onContinue: {}
-    )
+    private func cardColumn(title: String, card: Card, tint: Color) -> some View {
+        VStack(spacing: 8) {
+            Text(title)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(tint)
+            PlayingCardView(card: card)
+                .frame(width: 80)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(tint, lineWidth: 3)
+                )
+        }
+    }
 }

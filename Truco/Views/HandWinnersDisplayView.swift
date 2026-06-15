@@ -5,91 +5,85 @@ struct HandWinnersDisplayView: View {
     @Binding var isExpanded: Bool
     let handOutcomes: [HandOutcome]
     let players: [Player]
+    var localPlayerId: UUID?
 
     private func playerName(for id: UUID) -> String {
-        return players.first(where: { $0.id == id })?.name ?? "Unknown Player"
+        guard let localPlayerId else {
+            return players.first(where: { $0.id == id })?.name ?? "—"
+        }
+        return PlayerNaming.displayName(for: id, localPlayerId: localPlayerId)
     }
 
     var body: some View {
-        VStack {
-            Button(action: {
-                withAnimation(.easeInOut) {
-                    isExpanded.toggle()
-                }
-            }) {
+        VStack(spacing: 8) {
+            Button {
+                withAnimation(.easeInOut) { isExpanded.toggle() }
+            } label: {
                 HStack {
-                    Text("Hand Results")
-                        .font(.headline)
+                    Image(systemName: "list.number")
+                    Text("Trick Results")
+                        .font(.subheadline.weight(.semibold))
                     Spacer()
+                    Text("\(handOutcomes.count)/3")
+                        .font(.caption).foregroundStyle(Theme.cream.opacity(0.7))
                     Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold))
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 }
-                .padding()
-                .background(Color.brown.opacity(0.3))
-                .cornerRadius(10)
+                .foregroundStyle(Theme.cream)
+                .padding(.horizontal, 14).padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.black.opacity(0.2))
+                )
             }
-            .buttonStyle(PlainButtonStyle())
+            .buttonStyle(.plain)
 
             if isExpanded {
-                ForEach(handOutcomes.indices, id: \.self) { index in
-                    let outcome = handOutcomes[index]
-                    HStack {
-                        if let winnerId = outcome.winnerId {
-                            Text("Hand \(index + 1): \(playerName(for: winnerId))")
-                        } else {
-                            Text("Hand \(index + 1): Tie")
-                        }
-
-                        ZStack {
-                            if let losingCard = outcome.losingCard {
-                                PlayingCardView(card: losingCard)
-                                    .scaleEffect(0.5)
-                                    .rotationEffect(.degrees(-5))
-                                    .offset(x: -15)
-                            }
-                            if let winningCard = outcome.winningCard {
-                                PlayingCardView(card: winningCard)
-                                    .scaleEffect(0.5)
-                            }
-                        }
-                        .padding(.leading, -20) // Adjust padding to bring cards closer to text
+                VStack(spacing: 8) {
+                    if handOutcomes.isEmpty {
+                        Text("No tricks played yet.")
+                            .font(.caption).foregroundStyle(Theme.cream.opacity(0.6))
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .padding(.vertical, 2)
+                    ForEach(handOutcomes.indices, id: \.self) { index in
+                        let outcome = handOutcomes[index]
+                        HStack {
+                            Text("Trick \(index + 1)")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(Theme.cream.opacity(0.85))
+                            Spacer()
+                            if let winnerId = outcome.winnerId {
+                                Text(playerName(for: winnerId))
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(Theme.gold)
+                            } else {
+                                Text("Tie")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(Theme.cream.opacity(0.7))
+                            }
+                            ZStack {
+                                if let losingCard = outcome.losingCard {
+                                    PlayingCardView(card: losingCard)
+                                        .frame(width: 26)
+                                        .rotationEffect(.degrees(-6))
+                                        .offset(x: -10)
+                                }
+                                if let winningCard = outcome.winningCard {
+                                    PlayingCardView(card: winningCard)
+                                        .frame(width: 26)
+                                }
+                            }
+                        }
+                    }
                 }
-                .padding()
-                .background(Color.brown.opacity(0.2))
-                .cornerRadius(10)
-                .transition(.scale)
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.black.opacity(0.14))
+                )
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .padding()
     }
-}
-
-#Preview {
-    struct PreviewWrapper: View {
-        @State private var isExpanded = true
-
-        let player1 = Player(id: UUID(), name: "Alice", hand: [], score: 0)
-        let player2 = Player(id: UUID(), name: "Bob", hand: [], score: 0)
-
-        let card1 = Card(rank: .ace, suit: .espadas)
-        let card2 = Card(rank: .twelve, suit: .copas)
-        let card3 = Card(rank: .three, suit: .bastos)
-        let card4 = Card(rank: .seven, suit: .oros)
-
-        var body: some View {
-            HandWinnersDisplayView(
-                isExpanded: $isExpanded,
-                handOutcomes: [
-                    HandOutcome(winnerId: player1.id, winningCard: card1, losingCard: card2),
-                    HandOutcome(winnerId: player2.id, winningCard: card4, losingCard: card3),
-                    HandOutcome(winnerId: nil, winningCard: card1, losingCard: card1), // Tie example
-                ],
-                players: [player1, player2]
-            )
-            .padding()
-        }
-    }
-    return PreviewWrapper()
 }
