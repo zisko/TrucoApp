@@ -9,45 +9,87 @@ struct GameView: View {
     @State private var gameEngine: TrucoGameEngine
     @State private var trucoAlertShown = false
 
-    var isLocalPlayerTurn: Bool {
-        guard !gameState.players.isEmpty else { return false }
-        return gameState.players[gameState.currentPlayerIndex].id
-            == localPlayerId
-    }
-
-    var matchWinnerName: String? {
-        if let winnerId = gameState.matchWinner {
-            return gameState.players.first(where: { $0.id == winnerId })?.name
-        }
-        return nil
-    }
+    // Help / tooltips
+    @State private var showHelp = true
+    @State private var explanation: GameExplanation?
 
     init() {
         let initialGameState = GameState()
         _gameState = State(initialValue: initialGameState)
         _localPlayerId = State(initialValue: UUID())
-
-        // Use the factory to create the state-machine engine.
         gameEngine = GameEngineFactory.createEngine(gameState: initialGameState)
     }
 
+    // MARK: - Derived state
+
+    var isLocalPlayerTurn: Bool {
+        guard !gameState.players.isEmpty else { return false }
+        return gameState.players[gameState.currentPlayerIndex].id == localPlayerId
+    }
+
+    private var opponentHand: [Card] {
+        gameState.players.first(where: { $0.id != localPlayerId })?.hand ?? []
+    }
+
+    private var myHand: [Card] {
+        gameState.players.first(where: { $0.id == localPlayerId })?.hand ?? []
+    }
+
+    var matchWinnerName: String? {
+        guard let winnerId = gameState.matchWinner else { return nil }
+        return PlayerNaming.displayName(for: winnerId, localPlayerId: localPlayerId)
+    }
+
+    private var trucoResponsePending: Bool {
+        trucoIsCalled && gameState.trucoCallerId != localPlayerId
+    }
+
+    private var envidoResponsePending: Bool {
+        switch gameState.envidoState {
+        case .envidoCalled, .envidoEnvidoCalled, .realEnvidoCalled, .faltaEnvidoCalled:
+            return gameState.envidoCallerId != localPlayerId
+        default:
+            return false
+        }
+    }
+
+    private var trucoIsCalled: Bool {
+        switch gameState.trucoState {
+        case .trucoCalled, .retrucoCalled, .valeCuatroCalled: return true
+        default: return false
+        }
+    }
+
+    /// You may only play a card on your turn, during play, and when there is no
+    /// pending bet you still need to answer.
+    private var canPlayCards: Bool {
+        isLocalPlayerTurn
+            && gameState.gamePhase == .playing
+            && !trucoResponsePending
+            && !envidoResponsePending
+    }
+
+    private var isBlurred: Bool {
+        switch gameState.gamePhase {
+        case .handOver, .roundSummary, .gameOver, .envidoSummary: return true
+        default: return false
+        }
+    }
+
+    // MARK: - Actions
+
     func dealInitialCards() {
         gameEngine.dealInitialCards(player1Id: localPlayerId, player2Id: UUID())
-        print(
-            "dealInitialCards - isLocalPlayerTurn: \(isLocalPlayerTurn), gamePhase: \(gameState.gamePhase)"
-        )
         if !isLocalPlayerTurn && gameState.gamePhase == .playing {
             gameEngine.makeOpponentMove()
         }
     }
 
     func playCard(_ card: Card) {
-        if isLocalPlayerTurn {
-            gameEngine.handle(move: .playCard(card))
-            // After the local player plays, if it's now the opponent's turn, trigger their move.
-            if !isLocalPlayerTurn {
-                gameEngine.makeOpponentMove()
-            }
+        guard canPlayCards else { return }
+        gameEngine.handle(move: .playCard(card))
+        if !isLocalPlayerTurn {
+            gameEngine.makeOpponentMove()
         }
     }
 
@@ -73,9 +115,7 @@ struct GameView: View {
     }
 
     /// Applies a player move, then lets the CPU respond if the turn has passed
-    /// to it while play continues. Without this, calls/responses (Truco,
-    /// Envido, accept/reject) leave the turn on the CPU with nothing to drive
-    /// it, stalling the game.
+    /// to it while play continues.
     func handleMove(_ move: GameMove) {
         gameEngine.handle(move: move)
         if !isLocalPlayerTurn && gameState.gamePhase == .playing {
@@ -83,462 +123,341 @@ struct GameView: View {
         }
     }
 
+    // MARK: - Body
+
     var body: some View {
         ZStack {
-            VStack(spacing: 0) {
-                // Scoreboard (pinned to the top)
-                if !gameState.players.isEmpty {
-                    HStack {
-                        Text(
-                            "\(gameState.players[0].name): \(gameState.players[0].score)"
-                        )
-                        Spacer()
-                        Text(
-                            "\(gameState.players[1].name): \(gameState.players[1].score)"
-                        )
-                    }
-                    .font(.title2)
-                    .padding()
-                    .background(Color.black.opacity(0.2))
-                    .cornerRadius(10)
-                    .padding(.horizontal)
-                }
+            Theme.tableBackground
 
-                // Upper area scrolls, so accumulating content (played cards,
-                // hand results, status) can never push the player's hand and
-                // action buttons off the bottom of the screen.
-                ScrollView {
-                    VStack(spacing: 16) {
-                        // Opponent's Hand
-                        Text("Opponent's Hand")
-                            .font(.headline)
-                        HandView(
-                            cards: gameState.players.first(where: {
-                                $0.id != localPlayerId
-                            })?.hand ?? [],
-                            onCardTap: { _ in }
-                        )
-
-                        // Game Board
-                        Text("Played Cards")
-                            .font(.headline)
-                        PlayedCardsView(playedCards: gameState.currentHandPlayedCards)
-
-                        HandWinnersDisplayView(
-                            isExpanded: $isHandWinnersExpanded,
-                            handOutcomes: gameState.handOutcomes,
-                            players: gameState.players
-                        )
-
-                        if gameState.gamePhase == .playing
-                            || gameState.gamePhase == .handOver
-                        {
-                            GameStatusView(
-                                gameState: gameState,
-                                localPlayerId: localPlayerId
-                            )
-                        }
-                    }
-                    .padding(.vertical)
-                    .frame(maxWidth: .infinity)
-                }
-
-                // Local Player's Hand + actions (pinned to the bottom)
-                VStack(spacing: 8) {
-                    Text("Your Hand")
-                        .font(.headline)
-                    HandView(
-                        cards: gameState.players.first(where: {
-                            $0.id == localPlayerId
-                        })?.hand ?? []
-                    ) { card in
-                        if isLocalPlayerTurn {
-                            playCard(card)
-                        }
-                    }
-
-                    if gameState.gamePhase == .preGame
-                        || gameState.gamePhase == .gameOver
-                    {
-                        Button("Start New Game") {
-                            dealInitialCards()
-                        }
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
-                    }
-
-                    // Bet Buttons - Always available when it's the player's turn
-                    if isLocalPlayerTurn && gameState.gamePhase == .playing {
-                        VStack(spacing: 12) {
-                            // Envido Button - Only available at the beginning
-                            if gameState.envidoState == .none
-                                && gameState.currentHandPlayedCards.isEmpty
-                            {
-                                Button("Envido") {
-                                    handleMove(.callEnvido)
-                                }
-                                .disabled(gameState.trucoState != .none)
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 10)
-                                .background(Color.purple)
-                                .foregroundColor(.white)
-                                .cornerRadius(10)
-                            }
-
-                            // Truco Button - opens the bet. Raises (Retruco /
-                            // Vale Cuatro) are made by responding to a call, via
-                            // the overlay below.
-                            if gameState.trucoState == .none {
-                                Button("Truco") {
-                                    handleMove(.callTruco)
-                                }
-                                .disabled(gameState.envidoState != .none && gameState.envidoState != .accepted && gameState.envidoState != .rejected)
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 10)
-                                .background(Color.orange)
-                                .foregroundColor(.white)
-                                .cornerRadius(10)
-                            }
-                        }
-                    }
-                }
-                .padding(.bottom)
+            VStack(spacing: 10) {
+                topBar
+                scoreBar
+                if showHelp { hintBar }
+                tableArea
+                bottomBar
             }
-            .blur(
-                radius: gameState.gamePhase == .handOver
-                    || gameState.gamePhase == .roundSummary
-                    || gameState.gamePhase == .gameOver
-                    || gameState.gamePhase == .envidoSummary
-                    ? 10 : 0
-            )
+            .padding(.horizontal, 14)
+            .padding(.top, 6)
+            .blur(radius: isBlurred ? 12 : 0)
+            .allowsHitTesting(!isBlurred)
 
-            // Accept/Reject Buttons Overlay
-            if gameState.trucoState == .trucoCalled, gameState.trucoCallerId != localPlayerId {
-                VStack(spacing: 12) {
-                    Text("Truco Called!")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundColor(.orange)
-
-                    HStack(spacing: 12) {
-                        Button("Accept Truco") {
-                            handleMove(.acceptTruco)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.green)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
-
-                        Button("Reject Truco") {
-                            handleMove(.rejectTruco)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.red)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
-
-                        Button("Retruco") {
-                            handleMove(.callTruco)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
-                    }
-                }
-                .padding(24)
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color(.systemBackground))
-                        .shadow(
-                            color: .black.opacity(0.1),
-                            radius: 10,
-                            x: 0,
-                            y: 5
-                        )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.orange.opacity(0.3), lineWidth: 2)
-                )
-            } else if gameState.trucoState == .retrucoCalled, gameState.trucoCallerId != localPlayerId {
-                VStack(spacing: 12) {
-                    Text("Retruco Called!")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundColor(.orange)
-
-                    HStack(spacing: 12) {
-                        Button("Accept Retruco") {
-                            handleMove(.acceptTruco)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.green)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
-
-                        Button("Reject Retruco") {
-                            handleMove(.rejectTruco)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.red)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
-
-                        Button("Vale Cuatro") {
-                            handleMove(.callTruco)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
-                    }
-                }
-                .padding(24)
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color(.systemBackground))
-                        .shadow(
-                            color: .black.opacity(0.1),
-                            radius: 10,
-                            x: 0,
-                            y: 5
-                        )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.orange.opacity(0.3), lineWidth: 2)
-                )
-            } else if gameState.trucoState == .valeCuatroCalled, gameState.trucoCallerId != localPlayerId {
-                VStack(spacing: 12) {
-                    Text("Vale Cuatro Called!")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundColor(.orange)
-
-                    HStack(spacing: 12) {
-                        Button("Accept Vale Cuatro") {
-                            handleMove(.acceptTruco)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.green)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
-
-                        Button("Reject Vale Cuatro") {
-                            handleMove(.rejectTruco)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.red)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
-                    }
-                }
-                .padding(24)
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color(.systemBackground))
-                        .shadow(
-                            color: .black.opacity(0.1),
-                            radius: 10,
-                            x: 0,
-                            y: 5
-                        )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.orange.opacity(0.3), lineWidth: 2)
-                )
-            } else if gameState.envidoState == .envidoCalled
-                && gameState.envidoCallerId != localPlayerId
-            {
-                VStack(spacing: 12) {
-                    Text("Envido Called!")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundColor(.purple)
-
-                    HStack(spacing: 12) {
-                        Button("Accept Envido") {
-                            handleMove(.acceptEnvido)
-                        }
-                        .buttonStyle(.borderedProminent)
-
-                        Button("Reject Envido") {
-                            handleMove(.rejectEnvido)
-                        }
-                        .buttonStyle(.bordered)
-                        .tint(.red)
-                    }
-
-                    HStack(spacing: 12) {
-                        Button("Real Envido") {
-                            handleMove(.callRealEnvido)
-                        }
-                        .buttonStyle(.bordered)
-                        .tint(.green)
-
-                        Button("Falta Envido") {
-                            handleMove(.callFaltaEnvido)
-                        }
-                        .buttonStyle(.bordered)
-                        .tint(.yellow)
-                    }
-                }
-                .padding(24)
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color(.systemBackground))
-                        .shadow(
-                            color: .black.opacity(0.1),
-                            radius: 10,
-                            x: 0,
-                            y: 5
-                        )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.purple.opacity(0.3), lineWidth: 2)
-                )
-            }
-
-            // Truco Result Feedback
-            if gameState.trucoState == .accepted, trucoAlertShown {
-                VStack(spacing: 16) {
-                    HStack {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                            .font(.title)
-                        Text("Truco Accepted!")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(.green)
-                    }
-                }
-                .padding(24)
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color(.systemBackground))
-                        .shadow(
-                            color: .black.opacity(0.1),
-                            radius: 10,
-                            x: 0,
-                            y: 5
-                        )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.green.opacity(0.3), lineWidth: 2)
-                )
-                .transition(.scale.combined(with: .opacity))
-                .onAppear {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                        withAnimation {
-                            trucoAlertShown = false
-                        }
-                    }
-                }
-            } else if gameState.trucoState == .rejected, trucoAlertShown {
-                VStack(spacing: 16) {
-                    HStack {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.red)
-                            .font(.title)
-                        Text("Truco Rejected!")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(.red)
-                    }
-                }
-                .padding(24)
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color(.systemBackground))
-                        .shadow(
-                            color: .black.opacity(0.1),
-                            radius: 10,
-                            x: 0,
-                            y: 5
-                        )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.red.opacity(0.3), lineWidth: 2)
-                )
-                .transition(.scale.combined(with: .opacity))
-                .onAppear {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                        withAnimation {
-                            trucoAlertShown = false
-                        }
-                    }
-                }
-            }
-
-            // Overlays
-            if gameState.gamePhase == .handOver {
-                if let lastOutcome = gameState.handOutcomes.last {
-                    HandOutcomeView(
-                        outcome: lastOutcome,
-                        players: gameState.players
-                    ) {
-                        continueAfterHand()
-                    }
-                }
-            }
-
-            if gameState.gamePhase == .roundSummary {
-                RoundSummaryView(gameState: gameState) {
-                    startNewRound()
-                }
-            }
-
-            if gameState.gamePhase == .envidoSummary {
-                EnvidoSummaryView(gameState: gameState) {
-                    continueAfterEnvido()
-                }
-            }
-
-            if gameState.gamePhase == .gameOver {
-                VStack {
-                    Text("Match Over!")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                    if let winnerName = matchWinnerName {
-                        Text("\(winnerName) wins!")
-                            .font(.title)
-                            .padding()
-                    }
-                    Button("Play Again") {
-                        dealInitialCards()
-                    }
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.black.opacity(0.8))
-                .foregroundColor(.white)
-            }
+            overlays
         }
         .onChange(of: gameState.trucoState) { newValue in
             if newValue == .accepted || newValue == .rejected {
-                withAnimation {
-                    trucoAlertShown = true
-                }
+                withAnimation { trucoAlertShown = true }
             }
         }
+        .sheet(item: $explanation) { item in
+            ExplanationSheet(explanation: item)
+        }
+    }
+
+    // MARK: - Top bar
+
+    private var topBar: some View {
+        HStack {
+            Text("Truco")
+                .font(.system(size: 24, weight: .heavy, design: .rounded))
+                .foregroundStyle(Theme.gold)
+            Spacer()
+            Button {
+                withAnimation(.easeInOut) { showHelp.toggle() }
+            } label: {
+                Image(systemName: showHelp ? "questionmark.circle.fill" : "questionmark.circle")
+                    .font(.title2)
+                    .foregroundStyle(Theme.cream)
+            }
+            .accessibilityLabel(showHelp ? "Hide tips" : "Show tips")
+        }
+    }
+
+    // MARK: - Scoreboard
+
+    private var scoreBar: some View {
+        HStack(spacing: 12) {
+            scorePill(name: "You", score: myScore, isTurn: isLocalPlayerTurn, isMano: manoIsLocal)
+            Text("vs").font(.caption.weight(.bold)).foregroundStyle(Theme.cream.opacity(0.6))
+            scorePill(name: "Opponent", score: opponentScore, isTurn: !isLocalPlayerTurn && !gameState.players.isEmpty, isMano: !manoIsLocal && gameState.manoPlayerId != nil)
+        }
+    }
+
+    private var myScore: Int { gameState.players.first(where: { $0.id == localPlayerId })?.score ?? 0 }
+    private var opponentScore: Int { gameState.players.first(where: { $0.id != localPlayerId })?.score ?? 0 }
+    private var manoIsLocal: Bool { gameState.manoPlayerId == localPlayerId }
+
+    private func scorePill(name: String, score: Int, isTurn: Bool, isMano: Bool) -> some View {
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 4) {
+                    Text(name).font(.subheadline.weight(.bold))
+                    if isMano {
+                        Text("MANO")
+                            .font(.system(size: 8, weight: .heavy))
+                            .padding(.horizontal, 4).padding(.vertical, 1)
+                            .background(Capsule().fill(Theme.gold.opacity(0.3)))
+                    }
+                }
+                if isTurn {
+                    Text("Turn").font(.caption2).foregroundStyle(Theme.gold)
+                }
+            }
+            Spacer()
+            Text("\(score)")
+                .font(.system(size: 26, weight: .heavy, design: .rounded))
+                .foregroundStyle(Theme.cream)
+                .contentTransition(.numericText())
+        }
+        .foregroundStyle(Theme.cream)
+        .padding(.horizontal, 14).padding(.vertical, 8)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.black.opacity(0.22))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(isTurn ? Theme.gold.opacity(0.8) : .white.opacity(0.08), lineWidth: isTurn ? 2 : 1)
+                )
+        )
+        .animation(.easeInOut, value: isTurn)
+    }
+
+    // MARK: - Hint bar
+
+    private var hintBar: some View {
+        let hint = GameGuidance.hint(for: gameState, localPlayerId: localPlayerId)
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: hint.systemImage)
+                    .font(.title3)
+                    .foregroundStyle(hint.tone)
+                    .frame(width: 26)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(hint.title).font(.subheadline.weight(.bold)).foregroundStyle(Theme.cream)
+                    Text(hint.message).font(.caption).foregroundStyle(Theme.cream.opacity(0.85))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+            HStack(spacing: 10) {
+                Button("What's Truco?") { explanation = GameGuidance.trucoExplanation }
+                    .buttonStyle(SecondaryActionButtonStyle(tint: .orange))
+                Button("What's Envido?") { explanation = GameGuidance.envidoExplanation }
+                    .buttonStyle(SecondaryActionButtonStyle(tint: .purple))
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassPanel(cornerRadius: 16, accent: hint.tone)
+        .transition(.move(edge: .top).combined(with: .opacity))
+    }
+
+    // MARK: - Table area (scrolls)
+
+    private var tableArea: some View {
+        ScrollView {
+            VStack(spacing: 14) {
+                // Opponent
+                VStack(spacing: 6) {
+                    Text("Opponent")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.cream.opacity(0.8))
+                    HandView(cards: opponentHand, faceDown: true, cardWidth: 50)
+                }
+
+                // Stakes badges (Truco / Envido)
+                StakesBadgeRow(gameState: gameState)
+
+                // Table
+                PlayedCardsView(playedCards: gameState.currentHandPlayedCards, localPlayerId: localPlayerId)
+
+                HandWinnersDisplayView(
+                    isExpanded: $isHandWinnersExpanded,
+                    handOutcomes: gameState.handOutcomes,
+                    players: gameState.players,
+                    localPlayerId: localPlayerId
+                )
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+        }
+    }
+
+    // MARK: - Bottom bar (pinned)
+
+    private var bottomBar: some View {
+        VStack(spacing: 10) {
+            Text("Your Hand")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.cream.opacity(0.8))
+
+            HandView(
+                cards: myHand,
+                highlighted: canPlayCards,
+                cardWidth: 74
+            ) { card in
+                playCard(card)
+            }
+
+            if gameState.gamePhase == .preGame || gameState.gamePhase == .gameOver {
+                Button(gameState.gamePhase == .preGame ? "Deal" : "Play Again") {
+                    dealInitialCards()
+                }
+                .buttonStyle(PrimaryActionButtonStyle())
+            }
+
+            if isLocalPlayerTurn && gameState.gamePhase == .playing && !trucoResponsePending && !envidoResponsePending {
+                actionButtons
+            }
+        }
+        .padding(.bottom, 6)
+    }
+
+    private var actionButtons: some View {
+        HStack(spacing: 12) {
+            if gameState.envidoState == .none && gameState.currentHandPlayedCards.isEmpty {
+                Button("Envido") { handleMove(.callEnvido) }
+                    .buttonStyle(PrimaryActionButtonStyle(tint: .purple))
+                    .disabled(gameState.trucoState != .none)
+                    .opacity(gameState.trucoState != .none ? 0.5 : 1)
+            }
+            if gameState.trucoState == .none {
+                let envidoBlocks = gameState.envidoState != .none
+                    && gameState.envidoState != .accepted && gameState.envidoState != .rejected
+                Button("Truco") { handleMove(.callTruco) }
+                    .buttonStyle(PrimaryActionButtonStyle(tint: .orange))
+                    .disabled(envidoBlocks)
+                    .opacity(envidoBlocks ? 0.5 : 1)
+            }
+        }
+    }
+
+    // MARK: - Overlays
+
+    @ViewBuilder
+    private var overlays: some View {
+        if trucoResponsePending {
+            trucoResponseOverlay
+        } else if envidoResponsePending {
+            envidoResponseOverlay
+        }
+
+        if (gameState.trucoState == .accepted || gameState.trucoState == .rejected), trucoAlertShown {
+            trucoFeedbackOverlay
+        }
+
+        if gameState.gamePhase == .handOver, let lastOutcome = gameState.handOutcomes.last {
+            HandOutcomeView(outcome: lastOutcome, players: gameState.players, localPlayerId: localPlayerId) {
+                continueAfterHand()
+            }
+            .padding(.horizontal, 24)
+        }
+
+        if gameState.gamePhase == .roundSummary {
+            RoundSummaryView(gameState: gameState, localPlayerId: localPlayerId) {
+                startNewRound()
+            }
+            .padding(.horizontal, 24)
+        }
+
+        if gameState.gamePhase == .envidoSummary {
+            EnvidoSummaryView(gameState: gameState, localPlayerId: localPlayerId) {
+                continueAfterEnvido()
+            }
+            .padding(.horizontal, 24)
+        }
+
+        if gameState.gamePhase == .gameOver {
+            gameOverOverlay
+        }
+    }
+
+    private var trucoResponseOverlay: some View {
+        let name = GameGuidance.trucoName(gameState.trucoState)
+        let raiseLabel: String? = {
+            switch gameState.trucoState {
+            case .trucoCalled: return "Retruco"
+            case .retrucoCalled: return "Vale Cuatro"
+            default: return nil
+            }
+        }()
+        return ResponsePrompt(
+            title: "\(name) called!",
+            subtitle: "Worth \(gameState.trucoPoints) points",
+            tint: .orange
+        ) {
+            Button("Accept") { handleMove(.acceptTruco) }
+                .buttonStyle(PrimaryActionButtonStyle(tint: Theme.positive))
+            Button("Reject") { handleMove(.rejectTruco) }
+                .buttonStyle(SecondaryActionButtonStyle(tint: Theme.danger))
+            if let raiseLabel {
+                Button(raiseLabel) { handleMove(.callTruco) }
+                    .buttonStyle(SecondaryActionButtonStyle(tint: .orange))
+            }
+        }
+    }
+
+    private var envidoResponseOverlay: some View {
+        ResponsePrompt(
+            title: "\(GameGuidance.envidoName(gameState.envidoState)) called!",
+            subtitle: "Worth \(gameState.envidoPoints) points",
+            tint: .purple
+        ) {
+            Button("Accept") { handleMove(.acceptEnvido) }
+                .buttonStyle(PrimaryActionButtonStyle(tint: Theme.positive))
+            Button("Reject") { handleMove(.rejectEnvido) }
+                .buttonStyle(SecondaryActionButtonStyle(tint: Theme.danger))
+            if gameState.envidoState == .envidoCalled {
+                Button("Real Envido") { handleMove(.callRealEnvido) }
+                    .buttonStyle(SecondaryActionButtonStyle(tint: .green))
+            }
+            if gameState.envidoState != .faltaEnvidoCalled {
+                Button("Falta Envido") { handleMove(.callFaltaEnvido) }
+                    .buttonStyle(SecondaryActionButtonStyle(tint: .yellow))
+            }
+        }
+    }
+
+    private var trucoFeedbackOverlay: some View {
+        let accepted = gameState.trucoState == .accepted
+        return VStack(spacing: 10) {
+            Image(systemName: accepted ? "checkmark.seal.fill" : "xmark.seal.fill")
+                .font(.system(size: 40))
+                .foregroundStyle(accepted ? Theme.positive : Theme.danger)
+            Text(accepted ? "Truco Accepted" : "Truco Rejected")
+                .font(.title2.weight(.bold))
+                .foregroundStyle(Theme.cream)
+        }
+        .padding(28)
+        .glassPanel(accent: accepted ? Theme.positive : Theme.danger)
+        .transition(.scale.combined(with: .opacity))
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+                withAnimation { trucoAlertShown = false }
+            }
+        }
+    }
+
+    private var gameOverOverlay: some View {
+        VStack(spacing: 18) {
+            Image(systemName: "trophy.fill")
+                .font(.system(size: 54))
+                .foregroundStyle(Theme.gold)
+            Text("Match Over")
+                .font(.largeTitle.weight(.heavy))
+                .foregroundStyle(Theme.cream)
+            if let winnerName = matchWinnerName {
+                Text("\(winnerName) win\(winnerName == "You" ? "" : "s")!")
+                    .font(.title2)
+                    .foregroundStyle(Theme.cream.opacity(0.9))
+            }
+            Button("Play Again") { dealInitialCards() }
+                .buttonStyle(PrimaryActionButtonStyle())
+        }
+        .padding(40)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(.black.opacity(0.7))
+        .ignoresSafeArea()
     }
 }
 

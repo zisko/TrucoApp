@@ -11,13 +11,8 @@ struct MainMenuView: View {
 
     var body: some View {
         ZStack {
-            // Background Gradient
-            LinearGradient(
-                gradient: Gradient(colors: [Color.blue.opacity(0.6), Color.blue.opacity(0.9)]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+            // Background
+            Theme.tableBackground
 
             VStack(spacing: 20) {
                 Spacer()
@@ -25,7 +20,7 @@ struct MainMenuView: View {
                 // Title
                 Text("Truco Argentino")
                     .font(.system(size: 48, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
+                    .foregroundColor(Theme.gold)
                     .shadow(radius: 10)
                     .opacity(isTitleVisible ? 1 : 0)
                     .animation(.easeIn(duration: 1.0), value: isTitleVisible)
@@ -60,7 +55,7 @@ struct MainMenuView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
-                    .tint(.green)
+                    .tint(Theme.gold)
 
                     Button(action: {}) {
                         Text("Continue")

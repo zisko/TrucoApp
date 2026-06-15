@@ -3,22 +3,20 @@ import TrucoKit
 
 struct RoundSummaryView: View {
     let gameState: GameState
+    var localPlayerId: UUID?
     var onStartNewRound: () -> Void
 
     private var roundWinnerName: String {
-        guard let winnerId = gameState.roundWinner,
-              let winner = gameState.players.first(where: { $0.id == winnerId })
-        else {
-            return "No one"
+        guard let winnerId = gameState.roundWinner else { return "No one" }
+        guard let localPlayerId else {
+            return gameState.players.first(where: { $0.id == winnerId })?.name ?? "No one"
         }
-        return winner.name
+        return PlayerNaming.displayName(for: winnerId, localPlayerId: localPlayerId)
     }
 
     private var pointsBreakdown: [(label: String, value: String)] {
         var breakdown = [(String, String)]()
 
-        // Round / Truco points. `trucoPoints` is 1 for an unchallenged hand,
-        // otherwise the accepted Truco stake (2 / 3 / 4).
         switch gameState.trucoState {
         case .none:
             breakdown.append(("Round Winner", "+1"))
@@ -32,55 +30,47 @@ struct RoundSummaryView: View {
             break
         }
 
-        // Envido points
         if gameState.envidoState == .accepted {
             breakdown.append(("Envido", "+\(gameState.envidoPoints)"))
         } else if gameState.envidoState == .rejected {
             breakdown.append(("Envido Rejected", "+1"))
         }
-
         return breakdown
     }
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 18) {
             Text("Round Over")
-                .font(.largeTitle)
-                .fontWeight(.bold)
+                .font(.largeTitle.weight(.heavy))
+                .foregroundStyle(Theme.gold)
 
-            Text("\(roundWinnerName) wins the round!")
-                .font(.title)
-                .foregroundColor(.green)
+            Text("\(roundWinnerName) won the round!")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(Theme.cream)
 
             VStack(alignment: .leading, spacing: 10) {
-                Text("Points Awarded:")
-                    .font(.headline)
-
+                Text("Points Awarded")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(Theme.cream.opacity(0.8))
                 ForEach(pointsBreakdown, id: \.label) { item in
                     HStack {
                         Text(item.label)
                         Spacer()
-                        Text(item.value)
-                            .fontWeight(.bold)
+                        Text(item.value).fontWeight(.bold).foregroundStyle(Theme.gold)
                     }
+                    .font(.callout)
+                    .foregroundStyle(Theme.cream)
                 }
             }
             .padding()
-            .background(Color.white.opacity(0.1))
-            .cornerRadius(10)
+            .frame(maxWidth: .infinity)
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.black.opacity(0.2)))
 
-            Button("Start Next Round") {
-                onStartNewRound()
-            }
-            .padding()
-            .background(Color.green)
-            .foregroundColor(.white)
-            .cornerRadius(10)
+            Button("Next Round", action: onStartNewRound)
+                .buttonStyle(PrimaryActionButtonStyle())
         }
-        .padding(30)
-        .background(Color.black.opacity(0.85))
-        .cornerRadius(20)
-        .foregroundColor(.white)
-        .shadow(radius: 20)
+        .padding(28)
+        .frame(maxWidth: 420)
+        .glassPanel()
     }
 }
