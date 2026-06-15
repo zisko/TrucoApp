@@ -27,9 +27,8 @@ struct GameView: View {
         _gameState = State(initialValue: initialGameState)
         _localPlayerId = State(initialValue: UUID())
 
-        // Use the factory to create the engine
-        // Change .original to .refactored to use the new state machine engine
-        gameEngine = GameEngineFactory.createEngine(type: .refactored, gameState: initialGameState)
+        // Use the factory to create the state-machine engine.
+        gameEngine = GameEngineFactory.createEngine(gameState: initialGameState)
     }
 
     func dealInitialCards() {
@@ -182,9 +181,10 @@ struct GameView: View {
                             .cornerRadius(10)
                         }
 
-                        // Truco Button - Available on any turn when it's the player's turn
-                        switch gameState.trucoState {
-                        case .none:
+                        // Truco Button - opens the bet. Raises (Retruco / Vale
+                        // Cuatro) are made by responding to a call, via the
+                        // overlay below.
+                        if gameState.trucoState == .none {
                             Button("Truco") {
                                 gameEngine.handle(move: .callTruco)
                             }
@@ -194,30 +194,6 @@ struct GameView: View {
                             .background(Color.orange)
                             .foregroundColor(.white)
                             .cornerRadius(10)
-                        case let .accepted(caller):
-                            if caller != localPlayerId {
-                                Button("Retruco") {
-                                    gameEngine.handle(move: .callTruco)
-                                }
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 10)
-                                .background(Color.blue)
-                                .foregroundColor(.white)
-                                .cornerRadius(10)
-                            }
-                        case let .retrucoAccepted(caller):
-                            if caller != localPlayerId {
-                                Button("Vale Cuatro") {
-                                    gameEngine.handle(move: .callTruco)
-                                }
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 10)
-                                .background(Color.purple)
-                                .foregroundColor(.white)
-                                .cornerRadius(10)
-                            }
-                        default:
-                            EmptyView()
                         }
                     }
                 }
@@ -231,7 +207,7 @@ struct GameView: View {
             )
 
             // Accept/Reject Buttons Overlay
-            if case let .called(caller) = gameState.trucoState, caller != localPlayerId {
+            if gameState.trucoState == .trucoCalled, gameState.trucoCallerId != localPlayerId {
                 VStack(spacing: 12) {
                     Text("Truco Called!")
                         .font(.title2)
@@ -282,7 +258,7 @@ struct GameView: View {
                     RoundedRectangle(cornerRadius: 16)
                         .stroke(Color.orange.opacity(0.3), lineWidth: 2)
                 )
-            } else if case let .retrucoCalled(caller) = gameState.trucoState, caller != localPlayerId {
+            } else if gameState.trucoState == .retrucoCalled, gameState.trucoCallerId != localPlayerId {
                 VStack(spacing: 12) {
                     Text("Retruco Called!")
                         .font(.title2)
@@ -333,7 +309,7 @@ struct GameView: View {
                     RoundedRectangle(cornerRadius: 16)
                         .stroke(Color.orange.opacity(0.3), lineWidth: 2)
                 )
-            } else if case let .valeCuatroCalled(caller) = gameState.trucoState, caller != localPlayerId {
+            } else if gameState.trucoState == .valeCuatroCalled, gameState.trucoCallerId != localPlayerId {
                 VStack(spacing: 12) {
                     Text("Vale Cuatro Called!")
                         .font(.title2)
@@ -429,7 +405,7 @@ struct GameView: View {
             }
 
             // Truco Result Feedback
-            if case .accepted = gameState.trucoState, trucoAlertShown {
+            if gameState.trucoState == .accepted, trucoAlertShown {
                 VStack(spacing: 16) {
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
@@ -464,7 +440,7 @@ struct GameView: View {
                         }
                     }
                 }
-            } else if case .rejected = gameState.trucoState, trucoAlertShown {
+            } else if gameState.trucoState == .rejected, trucoAlertShown {
                 VStack(spacing: 16) {
                     HStack {
                         Image(systemName: "xmark.circle.fill")
@@ -549,11 +525,7 @@ struct GameView: View {
             }
         }
         .onChange(of: gameState.trucoState) { newValue in
-            if case .accepted = newValue {
-                withAnimation {
-                    trucoAlertShown = true
-                }
-            } else if case .rejected = newValue {
+            if newValue == .accepted || newValue == .rejected {
                 withAnimation {
                     trucoAlertShown = true
                 }

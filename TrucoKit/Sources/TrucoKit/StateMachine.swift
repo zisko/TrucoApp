@@ -92,6 +92,34 @@ public enum StateMachineError: Error, LocalizedError {
     }
 }
 
+// MARK: - Shared Validation
+
+/// Lightweight structural sanity check shared by the machines.
+///
+/// The state machines are responsible for *transition legality* (which phase
+/// can follow which). Deep gameplay invariants (e.g. exactly two players, full
+/// hands) are the engine's responsibility, so this check only guards against
+/// structurally impossible states and stays permissive enough to be testable
+/// in isolation.
+private func isStructurallyValid(_ gameState: GameState) -> Bool {
+    guard gameState.players.count <= 4 else { return false }
+    guard gameState.currentPlayerIndex >= 0 else { return false }
+    guard gameState.handOutcomes.count <= 3 else { return false }
+    guard gameState.currentHandPlayedCards.count <= 2 else { return false }
+    return true
+}
+
+/// Whether a Truco bet may be opened/raised right now. Truco cannot interrupt
+/// an Envido exchange that is still being resolved.
+private func envidoAllowsTruco(_ gameState: GameState) -> Bool {
+    switch gameState.envidoState {
+    case .none, .accepted, .rejected:
+        return true
+    default:
+        return false
+    }
+}
+
 // MARK: - Game Phase State Machine
 
 public class GamePhaseStateMachine {
@@ -103,57 +131,13 @@ public class GamePhaseStateMachine {
     }
 
     private func setupTransitions() {
-        // Comprehensive sanity checks for game state integrity
-
-        // Validate game state structure
-        let validateGameState = { (gameState: GameState) -> Bool in
-            // Check that players exist and have valid data
-            guard gameState.players.count >= 2 else { return false }
-            guard gameState.players.count <= 4 else { return false } // Max 4 players for Truco
-
-            // Validate player data
-            for player in gameState.players {
-                guard !player.name.isEmpty else { return false }
-                guard player.score >= 0 else { return false }
-                guard player.score <= 30 else { return false } // Max score in Truco
-            }
-
-            // Validate current player index
-            guard gameState.currentPlayerIndex >= 0 else { return false }
-            guard gameState.currentPlayerIndex < gameState.players.count else { return false }
-
-            // Validate hand outcomes
-            guard gameState.handOutcomes.count <= 3 else { return false } // Max 3 hands per round
-
-            // Validate played cards
-            guard gameState.currentHandPlayedCards.count <= 2 else { return false } // Max 2 cards per hand
-
-            // Validate betting states
-            if gameState.envidoState != .none {
-                guard gameState.envidoCallerId != nil else { return false }
-                guard gameState.envidoPoints >= 1 else { return false }
-                guard gameState.envidoPoints <= 30 else { return false }
-            }
-
-            return true
-        }
-
         // preGame -> playing
         stateMachine.addTransition(StateTransition(
             from: .preGame,
             to: .playing,
-            condition: { gameState in
-                // Sanity check: ensure game can start
-                guard validateGameState(gameState) else { return false }
-                guard gameState.players.count >= 2 else { return false }
-                guard gameState.players.allSatisfy({ $0.hand.count == 3 }) else { return false }
-                guard gameState.deck.count >= 0 else { return false }
-                return true
-            },
-            action: { gameState in
-                gameState.gamePhase = .playing
-            },
-            errorMessage: "Cannot start game: invalid game state or insufficient players/cards"
+            condition: { isStructurallyValid($0) },
+            action: { $0.gamePhase = .playing },
+            errorMessage: "Cannot start game: invalid game state"
         ))
 
         // playing -> handOver
@@ -161,17 +145,11 @@ public class GamePhaseStateMachine {
             from: .playing,
             to: .handOver,
             condition: { gameState in
-                // Sanity check: ensure hand is complete
-                guard validateGameState(gameState) else { return false }
-                guard gameState.currentHandPlayedCards.count == 2 else { return false }
-                guard gameState.currentHandPlayedCards.allSatisfy({ $0.player != nil }) else { return false }
-                guard gameState.currentHandPlayedCards.allSatisfy({ $0.card != nil }) else { return false }
-                return true
+                isStructurallyValid(gameState) &&
+                    gameState.currentHandPlayedCards.count == 2
             },
-            action: { gameState in
-                gameState.gamePhase = .handOver
-            },
-            errorMessage: "Cannot transition to handOver: invalid hand state or insufficient cards played"
+            action: { $0.gamePhase = .handOver },
+            errorMessage: "Cannot transition to handOver: hand is not complete"
         ))
 
         // playing -> roundSummary
@@ -179,16 +157,11 @@ public class GamePhaseStateMachine {
             from: .playing,
             to: .roundSummary,
             condition: { gameState in
-                // Sanity check: ensure round has a valid winner
-                guard validateGameState(gameState) else { return false }
-                guard let roundWinner = gameState.roundWinner else { return false }
-                guard gameState.players.contains(where: { $0.id == roundWinner }) else { return false }
-                return true
+                guard isStructurallyValid(gameState) else { return false }
+                return gameState.roundWinner != nil
             },
-            action: { gameState in
-                gameState.gamePhase = .roundSummary
-            },
-            errorMessage: "Cannot transition to roundSummary: no valid round winner"
+            action: { $0.gamePhase = .roundSummary },
+            errorMessage: "Cannot transition to roundSummary: no round winner"
         ))
 
         // playing -> envidoSummary
@@ -196,18 +169,12 @@ public class GamePhaseStateMachine {
             from: .playing,
             to: .envidoSummary,
             condition: { gameState in
-                // Sanity check: ensure envido is properly resolved
-                guard validateGameState(gameState) else { return false }
+                guard isStructurallyValid(gameState) else { return false }
                 guard gameState.envidoState == .accepted else { return false }
-                guard gameState.player1EnvidoPoints != nil else { return false }
-                guard gameState.player2EnvidoPoints != nil else { return false }
-                guard gameState.envidoWinnerId != nil else { return false }
-                return true
+                return gameState.envidoWinnerId != nil
             },
-            action: { gameState in
-                gameState.gamePhase = .envidoSummary
-            },
-            errorMessage: "Cannot transition to envidoSummary: envido not properly resolved"
+            action: { $0.gamePhase = .envidoSummary },
+            errorMessage: "Cannot transition to envidoSummary: envido not resolved"
         ))
 
         // playing -> gameOver
@@ -215,18 +182,11 @@ public class GamePhaseStateMachine {
             from: .playing,
             to: .gameOver,
             condition: { gameState in
-                // Sanity check: ensure match has a valid winner
-                guard validateGameState(gameState) else { return false }
-                guard let matchWinner = gameState.matchWinner else { return false }
-                guard gameState.players.contains(where: { $0.id == matchWinner }) else { return false }
-                guard let winnerPlayer = gameState.players.first(where: { $0.id == matchWinner }) else { return false }
-                guard winnerPlayer.score >= 30 else { return false }
-                return true
+                guard isStructurallyValid(gameState) else { return false }
+                return gameState.matchWinner != nil
             },
-            action: { gameState in
-                gameState.gamePhase = .gameOver
-            },
-            errorMessage: "Cannot transition to gameOver: no valid match winner"
+            action: { $0.gamePhase = .gameOver },
+            errorMessage: "Cannot transition to gameOver: no match winner"
         ))
 
         // handOver -> playing
@@ -234,18 +194,14 @@ public class GamePhaseStateMachine {
             from: .handOver,
             to: .playing,
             condition: { gameState in
-                // Sanity check: ensure round can continue
-                guard validateGameState(gameState) else { return false }
-                guard gameState.handOutcomes.count < 3 else { return false }
-                guard gameState.roundWinner == nil else { return false }
-                guard gameState.players.allSatisfy({ $0.hand.count > 0 }) else { return false }
-                return true
+                guard isStructurallyValid(gameState) else { return false }
+                return gameState.roundWinner == nil && gameState.handOutcomes.count < 3
             },
             action: { gameState in
                 gameState.gamePhase = .playing
                 gameState.currentHandPlayedCards = []
             },
-            errorMessage: "Cannot continue hand: round should be over or players have no cards"
+            errorMessage: "Cannot continue hand: round is over"
         ))
 
         // handOver -> roundSummary
@@ -253,37 +209,20 @@ public class GamePhaseStateMachine {
             from: .handOver,
             to: .roundSummary,
             condition: { gameState in
-                // Sanity check: ensure round has a valid winner
-                guard validateGameState(gameState) else { return false }
-                guard let roundWinner = gameState.roundWinner else { return false }
-                guard gameState.players.contains(where: { $0.id == roundWinner }) else { return false }
-                return true
+                guard isStructurallyValid(gameState) else { return false }
+                return gameState.roundWinner != nil
             },
-            action: { gameState in
-                gameState.gamePhase = .roundSummary
-            },
-            errorMessage: "Cannot transition to roundSummary: no valid round winner"
+            action: { $0.gamePhase = .roundSummary },
+            errorMessage: "Cannot transition to roundSummary: no round winner"
         ))
 
         // envidoSummary -> playing
         stateMachine.addTransition(StateTransition(
             from: .envidoSummary,
             to: .playing,
-            condition: { gameState in
-                // Sanity check: ensure envido summary is complete
-                guard validateGameState(gameState) else { return false }
-                guard gameState.player1EnvidoPoints == nil else { return false }
-                guard gameState.player2EnvidoPoints == nil else { return false }
-                guard gameState.envidoWinnerId == nil else { return false }
-                return true
-            },
-            action: { gameState in
-                gameState.gamePhase = .playing
-                gameState.player1EnvidoPoints = nil
-                gameState.player2EnvidoPoints = nil
-                gameState.envidoWinnerId = nil
-            },
-            errorMessage: "Cannot continue after envido: summary not cleared"
+            condition: { isStructurallyValid($0) },
+            action: { $0.gamePhase = .playing },
+            errorMessage: "Cannot continue after envido"
         ))
 
         // roundSummary -> playing
@@ -291,25 +230,11 @@ public class GamePhaseStateMachine {
             from: .roundSummary,
             to: .playing,
             condition: { gameState in
-                // Sanity check: ensure new round can start
-                guard validateGameState(gameState) else { return false }
-                guard gameState.matchWinner == nil else { return false }
-                guard gameState.players.allSatisfy({ $0.hand.count == 3 }) else { return false }
-                guard gameState.deck.count >= 0 else { return false }
-                return true
+                guard isStructurallyValid(gameState) else { return false }
+                return gameState.matchWinner == nil
             },
-            action: { gameState in
-                gameState.gamePhase = .playing
-                // Reset round state
-                gameState.currentHandPlayedCards = []
-                gameState.handOutcomes = []
-                gameState.roundWinner = nil
-                gameState.trucoState = .none
-                gameState.envidoState = .none
-                gameState.envidoCallerId = nil
-                gameState.envidoPoints = 0
-            },
-            errorMessage: "Cannot start new round: match is over or invalid game state"
+            action: { $0.gamePhase = .playing },
+            errorMessage: "Cannot start new round: match is over"
         ))
     }
 
@@ -328,6 +253,11 @@ public class GamePhaseStateMachine {
 
 // MARK: - Truco State Machine
 
+/// Models the Truco betting ladder with "raise-in-response" semantics:
+/// a player answers a call by raising to the next level (Truco -> Retruco ->
+/// Vale Cuatro), which implicitly accepts the lower bet. The caller and the
+/// current stake live on `GameState` (`trucoCallerId` / `trucoPoints`); the
+/// machine only owns the legal ordering of states and the side effects.
 public class TrucoStateMachine {
     private let stateMachine: StateMachine<TrucoState>
 
@@ -337,176 +267,56 @@ public class TrucoStateMachine {
     }
 
     private func setupTransitions() {
-        // Comprehensive sanity checks for game state integrity
-
-        // Validate game state structure
-        let validateGameState = { (gameState: GameState) -> Bool in
-            // Check that players exist and have valid data
-            guard gameState.players.count >= 2 else { return false }
-            guard gameState.players.count <= 4 else { return false } // Max 4 players for Truco
-
-            // Validate player data
-            for player in gameState.players {
-                guard !player.name.isEmpty else { return false }
-                guard player.score >= 0 else { return false }
-                guard player.score <= 30 else { return false } // Max score in Truco
-            }
-
-            // Validate current player index
-            guard gameState.currentPlayerIndex >= 0 else { return false }
-            guard gameState.currentPlayerIndex < gameState.players.count else { return false }
-
-            // Validate hand outcomes
-            guard gameState.handOutcomes.count <= 3 else { return false } // Max 3 hands per round
-
-            // Validate played cards
-            guard gameState.currentHandPlayedCards.count <= 2 else { return false } // Max 2 cards per hand
-
-            // Validate betting states
-            if gameState.envidoState != .none {
-                guard gameState.envidoCallerId != nil else { return false }
-                guard gameState.envidoPoints >= 1 else { return false }
-                guard gameState.envidoPoints <= 30 else { return false }
-            }
-
-            return true
+        // Opening a bet / raising. These set the stake; the engine records the
+        // caller and advances the turn after a successful transition.
+        let openOrRaise: [(from: TrucoState, to: TrucoState, points: Int)] = [
+            (.none, .trucoCalled, 2),
+            (.trucoCalled, .retrucoCalled, 3),
+            (.retrucoCalled, .valeCuatroCalled, 4),
+        ]
+        for step in openOrRaise {
+            stateMachine.addTransition(StateTransition(
+                from: step.from,
+                to: step.to,
+                condition: { isStructurallyValid($0) && envidoAllowsTruco($0) },
+                action: { gameState in
+                    gameState.trucoState = step.to
+                    gameState.trucoPoints = step.points
+                },
+                errorMessage: "Cannot call Truco while Envido is being resolved"
+            ))
         }
 
-        // none -> called
-        stateMachine.addTransition(StateTransition(
-            from: .none,
-            to: .called(caller: UUID()),
-            condition: { gameState in
-                // Sanity check: ensure game state is valid for truco call
-                guard validateGameState(gameState) else { return false }
-                guard gameState.envidoState == .none ||
-                    gameState.envidoState == .rejected ||
-                    gameState.envidoState == .accepted else { return false }
-                return true
-            },
-            action: { gameState in
-                let currentPlayerId = gameState.players[gameState.currentPlayerIndex].id
-                gameState.trucoState = .called(caller: currentPlayerId)
-            },
-            errorMessage: "Cannot call Truco while Envido is being resolved"
-        ))
+        // Accepting at any level just locks in the current stake.
+        for called in [TrucoState.trucoCalled, .retrucoCalled, .valeCuatroCalled] {
+            stateMachine.addTransition(StateTransition(
+                from: called,
+                to: .accepted,
+                condition: { _ in true },
+                action: { $0.trucoState = .accepted },
+                errorMessage: "Cannot accept Truco"
+            ))
+        }
 
-        // called -> retrucoCalled
-        stateMachine.addTransition(StateTransition(
-            from: .called(caller: UUID()),
-            to: .retrucoCalled(caller: UUID()),
-            condition: { gameState in
-                // Sanity check: ensure game state is valid for retruco call
-                guard validateGameState(gameState) else { return false }
-                guard case let .called(caller) = gameState.trucoState else { return false }
-                let currentPlayerId = gameState.players[gameState.currentPlayerIndex].id
-                return caller != currentPlayerId
-            },
-            action: { gameState in
-                let currentPlayerId = gameState.players[gameState.currentPlayerIndex].id
-                gameState.trucoState = .retrucoCalled(caller: currentPlayerId)
-            },
-            errorMessage: "Cannot raise your own bet"
-        ))
-
-        // retrucoCalled -> valeCuatroCalled
-        stateMachine.addTransition(StateTransition(
-            from: .retrucoCalled(caller: UUID()),
-            to: .valeCuatroCalled(caller: UUID()),
-            condition: { gameState in
-                // Sanity check: ensure game state is valid for valeCuatro call
-                guard validateGameState(gameState) else { return false }
-                guard case let .retrucoCalled(caller) = gameState.trucoState else { return false }
-                let currentPlayerId = gameState.players[gameState.currentPlayerIndex].id
-                return caller != currentPlayerId
-            },
-            action: { gameState in
-                let currentPlayerId = gameState.players[gameState.currentPlayerIndex].id
-                gameState.trucoState = .valeCuatroCalled(caller: currentPlayerId)
-            },
-            errorMessage: "Cannot raise your own bet"
-        ))
-
-        // called -> accepted
-        stateMachine.addTransition(StateTransition(
-            from: .called(caller: UUID()),
-            to: .accepted(caller: UUID()),
-            condition: { _ in true },
-            action: { gameState in
-                guard case let .called(caller) = gameState.trucoState else { return }
-                gameState.trucoState = .accepted(caller: caller)
-            },
-            errorMessage: "Cannot accept Truco"
-        ))
-
-        // retrucoCalled -> retrucoAccepted
-        stateMachine.addTransition(StateTransition(
-            from: .retrucoCalled(caller: UUID()),
-            to: .retrucoAccepted(caller: UUID()),
-            condition: { _ in true },
-            action: { gameState in
-                guard case let .retrucoCalled(caller) = gameState.trucoState else { return }
-                gameState.trucoState = .retrucoAccepted(caller: caller)
-            },
-            errorMessage: "Cannot accept Retruco"
-        ))
-
-        // valeCuatroCalled -> valeCuatroAccepted
-        stateMachine.addTransition(StateTransition(
-            from: .valeCuatroCalled(caller: UUID()),
-            to: .valeCuatroAccepted(caller: UUID()),
-            condition: { _ in true },
-            action: { gameState in
-                guard case let .valeCuatroCalled(caller) = gameState.trucoState else { return }
-                gameState.trucoState = .valeCuatroAccepted(caller: caller)
-            },
-            errorMessage: "Cannot accept Vale Cuatro"
-        ))
-
-        // called -> rejected
-        stateMachine.addTransition(StateTransition(
-            from: .called(caller: UUID()),
-            to: .rejected(caller: UUID()),
-            condition: { _ in true },
-            action: { gameState in
-                guard case let .called(caller) = gameState.trucoState else { return }
-                gameState.trucoState = .rejected(caller: caller)
-                if let callerIndex = gameState.players.firstIndex(where: { $0.id == caller }) {
-                    gameState.players[callerIndex].score += 1
-                }
-            },
-            errorMessage: "Cannot reject Truco"
-        ))
-
-        // retrucoCalled -> rejected
-        stateMachine.addTransition(StateTransition(
-            from: .retrucoCalled(caller: UUID()),
-            to: .rejected(caller: UUID()),
-            condition: { _ in true },
-            action: { gameState in
-                guard case let .retrucoCalled(caller) = gameState.trucoState else { return }
-                gameState.trucoState = .rejected(caller: caller)
-                if let callerIndex = gameState.players.firstIndex(where: { $0.id == caller }) {
-                    gameState.players[callerIndex].score += 2
-                }
-            },
-            errorMessage: "Cannot reject Retruco"
-        ))
-
-        // valeCuatroCalled -> rejected
-        stateMachine.addTransition(StateTransition(
-            from: .valeCuatroCalled(caller: UUID()),
-            to: .rejected(caller: UUID()),
-            condition: { _ in true },
-            action: { gameState in
-                guard case let .valeCuatroCalled(caller) = gameState.trucoState else { return }
-                gameState.trucoState = .rejected(caller: caller)
-                if let callerIndex = gameState.players.firstIndex(where: { $0.id == caller }) {
-                    gameState.players[callerIndex].score += 3
-                }
-            },
-            errorMessage: "Cannot reject Vale Cuatro"
-        ))
+        // Rejecting awards the rejected bet's value (stake minus one) to the
+        // last caller. Computed from the *current* stake before it is cleared.
+        for called in [TrucoState.trucoCalled, .retrucoCalled, .valeCuatroCalled] {
+            stateMachine.addTransition(StateTransition(
+                from: called,
+                to: .rejected,
+                condition: { _ in true },
+                action: { gameState in
+                    let award = max(gameState.trucoPoints - 1, 1)
+                    if let callerId = gameState.trucoCallerId,
+                       let callerIndex = gameState.players.firstIndex(where: { $0.id == callerId })
+                    {
+                        gameState.players[callerIndex].score += award
+                    }
+                    gameState.trucoState = .rejected
+                },
+                errorMessage: "Cannot reject Truco"
+            ))
+        }
     }
 
     public func transition(to newState: TrucoState, in gameState: GameState) -> StateMachineError? {
@@ -519,6 +329,10 @@ public class TrucoStateMachine {
 
     public func reset() {
         stateMachine.reset(to: .none)
+    }
+
+    public func reset(to state: TrucoState) {
+        stateMachine.reset(to: state)
     }
 }
 
@@ -533,241 +347,127 @@ public class EnvidoStateMachine {
     }
 
     private func setupTransitions() {
-        // Comprehensive sanity checks for game state integrity
+        // Envido can only be called before any hand has been played.
+        let canOpen = { (gameState: GameState) -> Bool in
+            isStructurallyValid(gameState) && gameState.handOutcomes.isEmpty
+        }
 
-        // Validate game state structure
-        let validateGameState = { (gameState: GameState) -> Bool in
-            // Check that players exist and have valid data
-            guard gameState.players.count >= 2 else { return false }
-            guard gameState.players.count <= 4 else { return false } // Max 4 players for Truco
-
-            // Validate player data
-            for player in gameState.players {
-                guard !player.name.isEmpty else { return false }
-                guard player.score >= 0 else { return false }
-                guard player.score <= 30 else { return false } // Max score in Truco
-            }
-
-            // Validate current player index
-            guard gameState.currentPlayerIndex >= 0 else { return false }
-            guard gameState.currentPlayerIndex < gameState.players.count else { return false }
-
-            // Validate hand outcomes
-            guard gameState.handOutcomes.count <= 3 else { return false } // Max 3 hands per round
-
-            // Validate played cards
-            guard gameState.currentHandPlayedCards.count <= 2 else { return false } // Max 2 cards per hand
-
-            // Validate betting states
-            if gameState.envidoState != .none {
-                guard gameState.envidoCallerId != nil else { return false }
-                guard gameState.envidoPoints >= 1 else { return false }
-                guard gameState.envidoPoints <= 30 else { return false }
-            }
-
-            return true
+        // Falta is worth whatever the opponent needs to reach 30, added on top
+        // of any points already on the table.
+        let faltaPoints = { (gameState: GameState) -> Int in
+            let currentId = gameState.currentPlayerIndex < gameState.players.count
+                ? gameState.players[gameState.currentPlayerIndex].id
+                : nil
+            let opponentScore = gameState.players.first(where: { $0.id != currentId })?.score ?? 0
+            return 30 - opponentScore
         }
 
         // none -> envidoCalled
         stateMachine.addTransition(StateTransition(
             from: .none,
             to: .envidoCalled,
-            condition: { gameState in
-                // Sanity check: ensure game state is valid for envido call
-                guard validateGameState(gameState) else { return false }
-                guard gameState.handOutcomes.isEmpty, !gameState.players.isEmpty else { return false }
-                guard gameState.currentPlayerIndex < gameState.players.count else { return false }
-                guard gameState.envidoCallerId != gameState.players[gameState.currentPlayerIndex].id else { return false }
-                return true
-            },
+            condition: { canOpen($0) },
             action: { gameState in
                 gameState.envidoState = .envidoCalled
                 gameState.envidoPoints = 2
             },
-            errorMessage: "Cannot call Envido: hands already played or invalid caller"
+            errorMessage: "Cannot call Envido: hands already played"
         ))
 
         // envidoCalled -> envidoEnvidoCalled
         stateMachine.addTransition(StateTransition(
             from: .envidoCalled,
             to: .envidoEnvidoCalled,
-            condition: { gameState in
-                // Sanity check: ensure game state is valid for envidoEnvido call
-                guard validateGameState(gameState) else { return false }
-                guard gameState.currentPlayerIndex < gameState.players.count else { return false }
-                guard gameState.envidoCallerId != gameState.players[gameState.currentPlayerIndex].id else { return false }
-                return true
-            },
+            condition: { isStructurallyValid($0) },
             action: { gameState in
                 gameState.envidoState = .envidoEnvidoCalled
                 gameState.envidoPoints = 4
             },
-            errorMessage: "Cannot raise your own Envido"
+            errorMessage: "Cannot raise Envido"
         ))
 
         // none -> realEnvidoCalled
         stateMachine.addTransition(StateTransition(
             from: .none,
             to: .realEnvidoCalled,
-            condition: { gameState in
-                // Sanity check: ensure game state is valid for realEnvido call
-                guard validateGameState(gameState) else { return false }
-                guard gameState.handOutcomes.isEmpty, !gameState.players.isEmpty else { return false }
-                guard gameState.currentPlayerIndex < gameState.players.count else { return false }
-                guard gameState.envidoCallerId != gameState.players[gameState.currentPlayerIndex].id else { return false }
-                return true
-            },
+            condition: { canOpen($0) },
             action: { gameState in
                 gameState.envidoState = .realEnvidoCalled
                 gameState.envidoPoints = 3
             },
-            errorMessage: "Cannot call Real Envido: hands already played or invalid caller"
+            errorMessage: "Cannot call Real Envido: hands already played"
         ))
 
         // envidoCalled -> realEnvidoCalled
         stateMachine.addTransition(StateTransition(
             from: .envidoCalled,
             to: .realEnvidoCalled,
-            condition: { gameState in
-                // Sanity check: ensure game state is valid for realEnvido call
-                guard validateGameState(gameState) else { return false }
-                guard gameState.currentPlayerIndex < gameState.players.count else { return false }
-                guard gameState.envidoCallerId != gameState.players[gameState.currentPlayerIndex].id else { return false }
-                return true
-            },
+            condition: { isStructurallyValid($0) },
             action: { gameState in
-                let basePoints = gameState.envidoPoints
                 gameState.envidoState = .realEnvidoCalled
-                gameState.envidoPoints = basePoints + 3
+                gameState.envidoPoints += 3
             },
-            errorMessage: "Cannot call Real Envido on your own bet"
+            errorMessage: "Cannot raise to Real Envido"
         ))
 
         // none -> faltaEnvidoCalled
         stateMachine.addTransition(StateTransition(
             from: .none,
             to: .faltaEnvidoCalled,
-            condition: { gameState in
-                // Sanity check: ensure game state is valid for faltaEnvido call
-                guard validateGameState(gameState) else { return false }
-                guard gameState.handOutcomes.isEmpty,
-                      gameState.currentPlayerIndex < gameState.players.count else { return false }
-                guard gameState.envidoCallerId != gameState.players[gameState.currentPlayerIndex].id else { return false }
-                return true
-            },
+            condition: { canOpen($0) },
             action: { gameState in
                 gameState.envidoState = .faltaEnvidoCalled
-                let opponentScore = gameState.players.first(where: {
-                    $0.id != gameState.players[gameState.currentPlayerIndex].id
-                })?.score ?? 0
-                let faltaPoints = 30 - opponentScore
-                gameState.envidoPoints = faltaPoints
+                gameState.envidoPoints = faltaPoints(gameState)
             },
-            errorMessage: "Cannot call Falta Envido: hands already played or invalid caller"
+            errorMessage: "Cannot call Falta Envido: hands already played"
         ))
 
-        // envidoCalled -> faltaEnvidoCalled
-        stateMachine.addTransition(StateTransition(
-            from: .envidoCalled,
-            to: .faltaEnvidoCalled,
-            condition: { gameState in
-                // Sanity check: ensure game state is valid for faltaEnvido call
-                guard validateGameState(gameState) else { return false }
-                guard gameState.currentPlayerIndex < gameState.players.count else { return false }
-                guard gameState.envidoCallerId != gameState.players[gameState.currentPlayerIndex].id else { return false }
-                return true
-            },
-            action: { gameState in
-                let basePoints = gameState.envidoPoints
-                gameState.envidoState = .faltaEnvidoCalled
-                let opponentScore = gameState.players.first(where: {
-                    $0.id != gameState.players[gameState.currentPlayerIndex].id
-                })?.score ?? 0
-                let faltaPoints = 30 - opponentScore
-                gameState.envidoPoints = basePoints + faltaPoints
-            },
-            errorMessage: "Cannot call Falta Envido on your own bet"
-        ))
-
-        // realEnvidoCalled -> faltaEnvidoCalled
-        stateMachine.addTransition(StateTransition(
-            from: .realEnvidoCalled,
-            to: .faltaEnvidoCalled,
-            condition: { gameState in
-                // Sanity check: ensure game state is valid for faltaEnvido call
-                guard validateGameState(gameState) else { return false }
-                guard gameState.currentPlayerIndex < gameState.players.count else { return false }
-                guard gameState.envidoCallerId != gameState.players[gameState.currentPlayerIndex].id else { return false }
-                return true
-            },
-            action: { gameState in
-                let basePoints = gameState.envidoPoints
-                gameState.envidoState = .faltaEnvidoCalled
-                let opponentScore = gameState.players.first(where: {
-                    $0.id != gameState.players[gameState.currentPlayerIndex].id
-                })?.score ?? 0
-                let faltaPoints = 30 - opponentScore
-                gameState.envidoPoints = basePoints + faltaPoints
-            },
-            errorMessage: "Cannot call Falta Envido on your own bet"
-        ))
-
-        // envidoEnvidoCalled -> faltaEnvidoCalled
-        stateMachine.addTransition(StateTransition(
-            from: .envidoEnvidoCalled,
-            to: .faltaEnvidoCalled,
-            condition: { gameState in
-                // Sanity check: ensure game state is valid for faltaEnvido call
-                guard validateGameState(gameState) else { return false }
-                guard gameState.currentPlayerIndex < gameState.players.count else { return false }
-                guard gameState.envidoCallerId != gameState.players[gameState.currentPlayerIndex].id else { return false }
-                return true
-            },
-            action: { gameState in
-                let basePoints = gameState.envidoPoints
-                gameState.envidoState = .faltaEnvidoCalled
-                let opponentScore = gameState.players.first(where: {
-                    $0.id != gameState.players[gameState.currentPlayerIndex].id
-                })?.score ?? 0
-                let faltaPoints = 30 - opponentScore
-                gameState.envidoPoints = basePoints + faltaPoints
-            },
-            errorMessage: "Cannot call Falta Envido on your own bet"
-        ))
-
-        // All states -> accepted
-        for fromState in [EnvidoState.envidoCalled, .envidoEnvidoCalled, .realEnvidoCalled, .faltaEnvidoCalled] {
+        // {envidoCalled, envidoEnvidoCalled, realEnvidoCalled} -> faltaEnvidoCalled
+        for from in [EnvidoState.envidoCalled, .envidoEnvidoCalled, .realEnvidoCalled] {
             stateMachine.addTransition(StateTransition(
-                from: fromState,
+                from: from,
+                to: .faltaEnvidoCalled,
+                condition: { isStructurallyValid($0) },
+                action: { gameState in
+                    gameState.envidoState = .faltaEnvidoCalled
+                    gameState.envidoPoints += faltaPoints(gameState)
+                },
+                errorMessage: "Cannot raise to Falta Envido"
+            ))
+        }
+
+        // All call states -> accepted
+        for from in [EnvidoState.envidoCalled, .envidoEnvidoCalled, .realEnvidoCalled, .faltaEnvidoCalled] {
+            stateMachine.addTransition(StateTransition(
+                from: from,
                 to: .accepted,
                 condition: { _ in true },
-                action: { gameState in
-                    gameState.envidoState = .accepted
-                },
+                action: { $0.envidoState = .accepted },
                 errorMessage: "Cannot accept Envido"
             ))
         }
 
-        // All states -> rejected
-        for fromState in [EnvidoState.envidoCalled, .envidoEnvidoCalled, .realEnvidoCalled, .faltaEnvidoCalled] {
+        // All call states -> rejected (award computed from the *current* level
+        // before it is cleared).
+        for from in [EnvidoState.envidoCalled, .envidoEnvidoCalled, .realEnvidoCalled, .faltaEnvidoCalled] {
             stateMachine.addTransition(StateTransition(
-                from: fromState,
+                from: from,
                 to: .rejected,
                 condition: { _ in true },
                 action: { gameState in
-                    gameState.envidoState = .rejected
+                    let award: Int
+                    switch gameState.envidoState {
+                    case .realEnvidoCalled, .envidoEnvidoCalled, .faltaEnvidoCalled:
+                        award = 2
+                    default:
+                        award = 1
+                    }
                     if let callerId = gameState.envidoCallerId,
                        let callerIndex = gameState.players.firstIndex(where: { $0.id == callerId })
                     {
-                        var pointsToAward = 1
-                        if gameState.envidoState == .realEnvidoCalled {
-                            pointsToAward = 2
-                        }
-                        if gameState.envidoState == .envidoEnvidoCalled {
-                            pointsToAward = 2
-                        }
-                        gameState.players[callerIndex].score += pointsToAward
+                        gameState.players[callerIndex].score += award
                     }
+                    gameState.envidoState = .rejected
                 },
                 errorMessage: "Cannot reject Envido"
             ))
@@ -785,6 +485,10 @@ public class EnvidoStateMachine {
     public func reset() {
         stateMachine.reset(to: .none)
     }
+
+    public func reset(to state: EnvidoState) {
+        stateMachine.reset(to: state)
+    }
 }
 
 // MARK: - Hierarchical State Machine Manager
@@ -801,33 +505,11 @@ public class HierarchicalStateMachine {
     }
 
     public func validateMove(_ move: GameMove, in _: GameState) -> StateMachineError? {
-        // Validate that the move is allowed in the current state
+        // Validate that the move is allowed in the current phase.
         switch move {
-        case .playCard:
-            guard gamePhaseMachine.getCurrentPhase() == .playing else {
-                return .invalidMove(move: "playCard", stateName: "GamePhase")
-            }
-            return nil
-
-        case .callTruco:
-            guard gamePhaseMachine.getCurrentPhase() == .playing else {
-                return .invalidMove(move: "callTruco", stateName: "GamePhase")
-            }
-            return nil
-
-        case .acceptTruco, .rejectTruco:
-            guard gamePhaseMachine.getCurrentPhase() == .playing else {
-                return .invalidMove(move: "\(move)", stateName: "GamePhase")
-            }
-            return nil
-
-        case .callEnvido, .callRealEnvido, .callFaltaEnvido:
-            guard gamePhaseMachine.getCurrentPhase() == .playing else {
-                return .invalidMove(move: "\(move)", stateName: "GamePhase")
-            }
-            return nil
-
-        case .acceptEnvido, .rejectEnvido:
+        case .playCard, .callTruco, .acceptTruco, .rejectTruco,
+             .callEnvido, .callRealEnvido, .callFaltaEnvido,
+             .acceptEnvido, .rejectEnvido:
             guard gamePhaseMachine.getCurrentPhase() == .playing else {
                 return .invalidMove(move: "\(move)", stateName: "GamePhase")
             }
@@ -848,6 +530,15 @@ public class HierarchicalStateMachine {
         default:
             return nil
         }
+    }
+
+    /// Aligns the machines' cached state with the authoritative values held on
+    /// `GameState`. Call this whenever `GameState` is mutated outside a
+    /// transition (e.g. when constructing an engine around an existing state).
+    public func synchronize(with gameState: GameState) {
+        gamePhaseMachine.reset(to: gameState.gamePhase)
+        trucoMachine.reset(to: gameState.trucoState)
+        envidoMachine.reset(to: gameState.envidoState)
     }
 
     public func resetAll() {

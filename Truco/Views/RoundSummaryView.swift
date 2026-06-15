@@ -17,21 +17,17 @@ struct RoundSummaryView: View {
     private var pointsBreakdown: [(label: String, value: String)] {
         var breakdown = [(String, String)]()
 
-        // Round points (excluding truco)
-        if case .none = gameState.trucoState {
-            breakdown.append(("Round Winner", "+1"))
-        }
-
-        // Truco points
+        // Round / Truco points. `trucoPoints` is 1 for an unchallenged hand,
+        // otherwise the accepted Truco stake (2 / 3 / 4).
         switch gameState.trucoState {
-        case let .accepted(caller):
-            breakdown.append(("Truco", "+2"))
-        case let .retrucoAccepted(caller):
-            breakdown.append(("Retruco", "+3"))
-        case let .valeCuatroAccepted(caller):
-            breakdown.append(("Vale Cuatro", "+4"))
-        case let .rejected(caller):
-            breakdown.append(("Truco Rejected", "+1"))
+        case .none:
+            breakdown.append(("Round Winner", "+1"))
+        case .accepted:
+            let label = gameState.trucoPoints >= 4 ? "Vale Cuatro"
+                : (gameState.trucoPoints == 3 ? "Retruco" : "Truco")
+            breakdown.append((label, "+\(gameState.trucoPoints)"))
+        case .rejected:
+            breakdown.append(("Truco Rejected", "+\(max(gameState.trucoPoints - 1, 1))"))
         default:
             break
         }

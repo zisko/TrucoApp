@@ -455,27 +455,20 @@ final class GameEngineRefactoredTests: XCTestCase {
         let player2Id = UUID()
         engine.dealInitialCards(player1Id: player1Id, player2Id: player2Id)
 
-        // Call Truco
+        // Raise-in-response: each player answers a call by raising to the next
+        // level (which implicitly accepts the lower bet).
+
+        // P1 calls Truco
         _ = engine.handle(move: .callTruco)
         XCTAssertEqual(gameState.trucoState, .trucoCalled)
         XCTAssertEqual(gameState.trucoPoints, 2)
 
-        // Accept Truco
-        _ = engine.handle(move: .acceptTruco)
-        XCTAssertEqual(gameState.trucoState, .accepted)
-        XCTAssertEqual(gameState.trucoPoints, 2)
-
-        // Call Retruco (should become Retruco)
+        // P2 raises to Retruco
         _ = engine.handle(move: .callTruco)
         XCTAssertEqual(gameState.trucoState, .retrucoCalled)
         XCTAssertEqual(gameState.trucoPoints, 3)
 
-        // Accept Retruco
-        _ = engine.handle(move: .acceptTruco)
-        XCTAssertEqual(gameState.trucoState, .accepted)
-        XCTAssertEqual(gameState.trucoPoints, 3)
-
-        // Call Vale Cuatro (should become Vale Cuatro)
+        // P1 raises to Vale Cuatro
         _ = engine.handle(move: .callTruco)
         XCTAssertEqual(gameState.trucoState, .valeCuatroCalled)
         XCTAssertEqual(gameState.trucoPoints, 4)

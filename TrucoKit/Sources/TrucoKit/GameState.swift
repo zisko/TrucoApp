@@ -125,6 +125,8 @@ public struct HandOutcome: Codable, Hashable {
 
     // Truco State
     public var trucoState: TrucoState
+    public var trucoCallerId: UUID?
+    public var trucoPoints: Int // The points value of the current Truco bet
 
     // Envido State
     public var envidoState: EnvidoState
@@ -145,6 +147,8 @@ public struct HandOutcome: Codable, Hashable {
              handOutcomes,
              manoPlayerId,
              trucoState,
+             trucoCallerId,
+             trucoPoints,
              envidoState,
              envidoCallerId,
              envidoPoints,
@@ -174,6 +178,14 @@ public struct HandOutcome: Codable, Hashable {
         )
         manoPlayerId = try container.decode(UUID?.self, forKey: .manoPlayerId)
         trucoState = try container.decode(TrucoState.self, forKey: .trucoState)
+        trucoCallerId = try container.decodeIfPresent(
+            UUID.self,
+            forKey: .trucoCallerId
+        )
+        trucoPoints = try container.decodeIfPresent(
+            Int.self,
+            forKey: .trucoPoints
+        ) ?? 1
         envidoState = try container.decode(
             EnvidoState.self,
             forKey: .envidoState
@@ -212,6 +224,8 @@ public struct HandOutcome: Codable, Hashable {
         try container.encode(handOutcomes, forKey: .handOutcomes)
         try container.encode(manoPlayerId, forKey: .manoPlayerId)
         try container.encode(trucoState, forKey: .trucoState)
+        try container.encode(trucoCallerId, forKey: .trucoCallerId)
+        try container.encode(trucoPoints, forKey: .trucoPoints)
         try container.encode(envidoState, forKey: .envidoState)
         try container.encode(envidoCallerId, forKey: .envidoCallerId)
         try container.encode(envidoPoints, forKey: .envidoPoints)
@@ -232,6 +246,8 @@ public struct HandOutcome: Codable, Hashable {
         manoPlayerId = nil
 
         trucoState = .none
+        trucoCallerId = nil
+        trucoPoints = 1
         envidoState = .none
         envidoCallerId = nil
         envidoPoints = 0
@@ -260,15 +276,17 @@ public enum GamePhase: String, Codable {
     case gameOver
 }
 
-public enum TrucoState: Codable, Equatable, Hashable {
+/// The Truco betting ladder. The caller and the current stake are tracked
+/// separately on `GameState` (`trucoCallerId` / `trucoPoints`), mirroring how
+/// Envido is modelled. Escalation is "raise-in-response": a player answers a
+/// call by raising to the next level (which implicitly accepts the lower bet).
+public enum TrucoState: String, Codable, Equatable, Hashable {
     case none
-    case called(caller: UUID)
-    case accepted(caller: UUID)
-    case retrucoCalled(caller: UUID)
-    case retrucoAccepted(caller: UUID)
-    case valeCuatroCalled(caller: UUID)
-    case valeCuatroAccepted(caller: UUID)
-    case rejected(caller: UUID)
+    case trucoCalled
+    case retrucoCalled
+    case valeCuatroCalled
+    case accepted
+    case rejected
 }
 
 public enum EnvidoState: String, Codable {

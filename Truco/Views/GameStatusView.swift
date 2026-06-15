@@ -10,6 +10,10 @@ struct GameStatusView: View {
         return gameState.players[gameState.currentPlayerIndex].id == localPlayerId
     }
 
+    private var trucoCallerName: String {
+        gameState.players.first(where: { $0.id == gameState.trucoCallerId })?.name ?? ""
+    }
+
     var body: some View {
         VStack {
             // Turn Indicator
@@ -22,32 +26,24 @@ struct GameStatusView: View {
             switch gameState.trucoState {
             case .none:
                 EmptyView()
-            case let .called(caller):
-                Text("Truco called by \(gameState.players.first(where: { $0.id == caller })?.name ?? "")")
+            case .trucoCalled:
+                Text("Truco called by \(trucoCallerName)")
                     .font(.headline)
                     .foregroundColor(.orange)
-            case let .accepted(caller):
-                Text("Truco accepted by \(gameState.players.first(where: { $0.id != caller })?.name ?? "")")
+            case .retrucoCalled:
+                Text("Retruco called by \(trucoCallerName)")
                     .font(.headline)
                     .foregroundColor(.orange)
-            case let .retrucoCalled(caller):
-                Text("Retruco called by \(gameState.players.first(where: { $0.id == caller })?.name ?? "")")
+            case .valeCuatroCalled:
+                Text("Vale Cuatro called by \(trucoCallerName)")
                     .font(.headline)
                     .foregroundColor(.orange)
-            case let .retrucoAccepted(caller):
-                Text("Retruco accepted by \(gameState.players.first(where: { $0.id != caller })?.name ?? "")")
+            case .accepted:
+                Text("Truco accepted (\(gameState.trucoPoints) pts)")
                     .font(.headline)
                     .foregroundColor(.orange)
-            case let .valeCuatroCalled(caller):
-                Text("Vale Cuatro called by \(gameState.players.first(where: { $0.id == caller })?.name ?? "")")
-                    .font(.headline)
-                    .foregroundColor(.orange)
-            case let .valeCuatroAccepted(caller):
-                Text("Vale Cuatro accepted by \(gameState.players.first(where: { $0.id != caller })?.name ?? "")")
-                    .font(.headline)
-                    .foregroundColor(.orange)
-            case let .rejected(caller):
-                Text("Truco rejected by \(gameState.players.first(where: { $0.id != caller })?.name ?? "")")
+            case .rejected:
+                Text("Truco rejected")
                     .font(.headline)
                     .foregroundColor(.red)
             }
