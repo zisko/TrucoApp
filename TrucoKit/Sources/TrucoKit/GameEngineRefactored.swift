@@ -271,6 +271,15 @@ public class TrucoEngineRefactored: TrucoGameEngine {
             return error
         }
 
+        // The Envido interruption is over; play resumes with the caller. (The
+        // accept path does this via `continueAfterEnvido` after the summary, but
+        // a rejection has no summary, so restore the turn here.)
+        if let callerId = gameState.envidoCallerId,
+           let callerIndex = gameState.players.firstIndex(where: { $0.id == callerId })
+        {
+            gameState.currentPlayerIndex = callerIndex
+        }
+
         checkMatchEnd()
         return nil
     }

@@ -72,10 +72,21 @@ struct GameView: View {
         }
     }
 
+    /// Applies a player move, then lets the CPU respond if the turn has passed
+    /// to it while play continues. Without this, calls/responses (Truco,
+    /// Envido, accept/reject) leave the turn on the CPU with nothing to drive
+    /// it, stalling the game.
+    func handleMove(_ move: GameMove) {
+        gameEngine.handle(move: move)
+        if !isLocalPlayerTurn && gameState.gamePhase == .playing {
+            gameEngine.makeOpponentMove()
+        }
+    }
+
     var body: some View {
         ZStack {
-            VStack {
-                // Scoreboard
+            VStack(spacing: 0) {
+                // Scoreboard (pinned to the top)
                 if !gameState.players.isEmpty {
                     HStack {
                         Text(
@@ -93,110 +104,107 @@ struct GameView: View {
                     .padding(.horizontal)
                 }
 
-                Spacer()
+                // Upper area scrolls, so accumulating content (played cards,
+                // hand results, status) can never push the player's hand and
+                // action buttons off the bottom of the screen.
+                ScrollView {
+                    VStack(spacing: 16) {
+                        // Opponent's Hand
+                        Text("Opponent's Hand")
+                            .font(.headline)
+                        HandView(
+                            cards: gameState.players.first(where: {
+                                $0.id != localPlayerId
+                            })?.hand ?? [],
+                            onCardTap: { _ in }
+                        )
 
-                // Opponent's Hand
-                Text("Opponent's Hand")
-                    .font(.headline)
-                HandView(
-                    cards: gameState.players.first(where: {
-                        $0.id != localPlayerId
-                    })?.hand ?? [],
-                    onCardTap: { _ in }
-                )
-                .padding()
+                        // Game Board
+                        Text("Played Cards")
+                            .font(.headline)
+                        PlayedCardsView(playedCards: gameState.currentHandPlayedCards)
 
-                Spacer()
+                        HandWinnersDisplayView(
+                            isExpanded: $isHandWinnersExpanded,
+                            handOutcomes: gameState.handOutcomes,
+                            players: gameState.players
+                        )
 
-                // Game Board
-                Text("Played Cards")
-                    .font(.headline)
-                PlayedCardsView(playedCards: gameState.currentHandPlayedCards)
-                    .padding()
-
-                HandWinnersDisplayView(
-                    isExpanded: $isHandWinnersExpanded,
-                    handOutcomes: gameState.handOutcomes,
-                    players: gameState.players
-                )
-
-                Spacer()
-
-                if gameState.gamePhase == .playing
-                    || gameState.gamePhase == .handOver
-                {
-                    GameStatusView(
-                        gameState: gameState,
-                        localPlayerId: localPlayerId
-                    )
-                    .padding(.bottom)
-                }
-
-                // Local Player's Hand
-                Text("Your Hand")
-                    .font(.headline)
-                HandView(
-                    cards: gameState.players.first(where: {
-                        $0.id == localPlayerId
-                    })?.hand ?? []
-                ) { card in
-                    if isLocalPlayerTurn {
-                        playCard(card)
-                    }
-                }
-                .padding()
-
-                if gameState.gamePhase == .preGame
-                    || gameState.gamePhase == .gameOver
-                {
-                    Button("Start New Game") {
-                        dealInitialCards()
-                    }
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
-                }
-
-                // Bet Buttons - Always available when it's the player's turn
-                if isLocalPlayerTurn && gameState.gamePhase == .playing {
-                    VStack(spacing: 12) {
-                        // Envido Button - Only available at the beginning
-                        if gameState.envidoState == .none
-                            && gameState.currentHandPlayedCards.isEmpty
+                        if gameState.gamePhase == .playing
+                            || gameState.gamePhase == .handOver
                         {
-                            Button("Envido") {
-                                gameEngine.handle(move: .callEnvido)
-                                if !isLocalPlayerTurn
-                                    && gameState.gamePhase == .playing
-                                {
-                                    gameEngine.makeOpponentMove()
-                                }
-                            }
-                            .disabled(gameState.trucoState != .none)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 10)
-                            .background(Color.purple)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
+                            GameStatusView(
+                                gameState: gameState,
+                                localPlayerId: localPlayerId
+                            )
                         }
+                    }
+                    .padding(.vertical)
+                    .frame(maxWidth: .infinity)
+                }
 
-                        // Truco Button - opens the bet. Raises (Retruco / Vale
-                        // Cuatro) are made by responding to a call, via the
-                        // overlay below.
-                        if gameState.trucoState == .none {
-                            Button("Truco") {
-                                gameEngine.handle(move: .callTruco)
+                // Local Player's Hand + actions (pinned to the bottom)
+                VStack(spacing: 8) {
+                    Text("Your Hand")
+                        .font(.headline)
+                    HandView(
+                        cards: gameState.players.first(where: {
+                            $0.id == localPlayerId
+                        })?.hand ?? []
+                    ) { card in
+                        if isLocalPlayerTurn {
+                            playCard(card)
+                        }
+                    }
+
+                    if gameState.gamePhase == .preGame
+                        || gameState.gamePhase == .gameOver
+                    {
+                        Button("Start New Game") {
+                            dealInitialCards()
+                        }
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                    }
+
+                    // Bet Buttons - Always available when it's the player's turn
+                    if isLocalPlayerTurn && gameState.gamePhase == .playing {
+                        VStack(spacing: 12) {
+                            // Envido Button - Only available at the beginning
+                            if gameState.envidoState == .none
+                                && gameState.currentHandPlayedCards.isEmpty
+                            {
+                                Button("Envido") {
+                                    handleMove(.callEnvido)
+                                }
+                                .disabled(gameState.trucoState != .none)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 10)
+                                .background(Color.purple)
+                                .foregroundColor(.white)
+                                .cornerRadius(10)
                             }
-                            .disabled(gameState.envidoState != .none && gameState.envidoState != .accepted && gameState.envidoState != .rejected)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 10)
-                            .background(Color.orange)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
+
+                            // Truco Button - opens the bet. Raises (Retruco /
+                            // Vale Cuatro) are made by responding to a call, via
+                            // the overlay below.
+                            if gameState.trucoState == .none {
+                                Button("Truco") {
+                                    handleMove(.callTruco)
+                                }
+                                .disabled(gameState.envidoState != .none && gameState.envidoState != .accepted && gameState.envidoState != .rejected)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 10)
+                                .background(Color.orange)
+                                .foregroundColor(.white)
+                                .cornerRadius(10)
+                            }
                         }
                     }
                 }
+                .padding(.bottom)
             }
             .blur(
                 radius: gameState.gamePhase == .handOver
@@ -216,7 +224,7 @@ struct GameView: View {
 
                     HStack(spacing: 12) {
                         Button("Accept Truco") {
-                            gameEngine.handle(move: .acceptTruco)
+                            handleMove(.acceptTruco)
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
@@ -225,7 +233,7 @@ struct GameView: View {
                         .cornerRadius(8)
 
                         Button("Reject Truco") {
-                            gameEngine.handle(move: .rejectTruco)
+                            handleMove(.rejectTruco)
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
@@ -234,7 +242,7 @@ struct GameView: View {
                         .cornerRadius(8)
 
                         Button("Retruco") {
-                            gameEngine.handle(move: .callTruco)
+                            handleMove(.callTruco)
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
@@ -267,7 +275,7 @@ struct GameView: View {
 
                     HStack(spacing: 12) {
                         Button("Accept Retruco") {
-                            gameEngine.handle(move: .acceptTruco)
+                            handleMove(.acceptTruco)
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
@@ -276,7 +284,7 @@ struct GameView: View {
                         .cornerRadius(8)
 
                         Button("Reject Retruco") {
-                            gameEngine.handle(move: .rejectTruco)
+                            handleMove(.rejectTruco)
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
@@ -285,7 +293,7 @@ struct GameView: View {
                         .cornerRadius(8)
 
                         Button("Vale Cuatro") {
-                            gameEngine.handle(move: .callTruco)
+                            handleMove(.callTruco)
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
@@ -318,7 +326,7 @@ struct GameView: View {
 
                     HStack(spacing: 12) {
                         Button("Accept Vale Cuatro") {
-                            gameEngine.handle(move: .acceptTruco)
+                            handleMove(.acceptTruco)
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
@@ -327,7 +335,7 @@ struct GameView: View {
                         .cornerRadius(8)
 
                         Button("Reject Vale Cuatro") {
-                            gameEngine.handle(move: .rejectTruco)
+                            handleMove(.rejectTruco)
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
@@ -362,12 +370,12 @@ struct GameView: View {
 
                     HStack(spacing: 12) {
                         Button("Accept Envido") {
-                            gameEngine.handle(move: .acceptEnvido)
+                            handleMove(.acceptEnvido)
                         }
                         .buttonStyle(.borderedProminent)
 
                         Button("Reject Envido") {
-                            gameEngine.handle(move: .rejectEnvido)
+                            handleMove(.rejectEnvido)
                         }
                         .buttonStyle(.bordered)
                         .tint(.red)
@@ -375,13 +383,13 @@ struct GameView: View {
 
                     HStack(spacing: 12) {
                         Button("Real Envido") {
-                            gameEngine.handle(move: .callRealEnvido)
+                            handleMove(.callRealEnvido)
                         }
                         .buttonStyle(.bordered)
                         .tint(.green)
 
                         Button("Falta Envido") {
-                            gameEngine.handle(move: .callFaltaEnvido)
+                            handleMove(.callFaltaEnvido)
                         }
                         .buttonStyle(.bordered)
                         .tint(.yellow)
