@@ -2,7 +2,7 @@
 import XCTest
 
 class TrucoEngineTestHelper {
-    var engine: TrucoEngine!
+    var engine: TrucoEngineRefactored!
     var gameState: GameState!
 
     var player1: Player {
@@ -17,7 +17,6 @@ class TrucoEngineTestHelper {
     func createNewGame(player1Hand: [Card], player2Hand: [Card], player1Score: Int = 0, player2Score: Int = 0) -> GameState {
         let state = GameState()
         gameState = state
-        engine = TrucoEngine(gameState: state)
 
         let player1Id = UUID()
         let player2Id = UUID()
@@ -30,6 +29,10 @@ class TrucoEngineTestHelper {
         state.manoPlayerId = player1Id
         state.currentPlayerIndex = 0
         state.gamePhase = .playing
+
+        // Build the engine after the state is configured so its machines
+        // synchronize to the in-progress (.playing) phase.
+        engine = TrucoEngineRefactored(gameState: state)
 
         return state
     }

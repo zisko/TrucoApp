@@ -9,8 +9,8 @@ public class TrucoEngineRefactored: TrucoGameEngine {
         self.gameState = gameState
         stateMachine = HierarchicalStateMachine()
 
-        // Synchronize state machines with current game state
-        synchronizeStateMachines()
+        // Align the machines with the authoritative state held on `gameState`.
+        stateMachine.synchronize(with: gameState)
     }
 
     /// Handles a game move with proper state machine validation and error handling
@@ -115,60 +115,52 @@ public class TrucoEngineRefactored: TrucoGameEngine {
     private func handleCallTruco() -> StateMachineError? {
         let currentPlayerId = gameState.players[gameState.currentPlayerIndex].id
 
-        // Determine the next Truco state based on current state
+        // Raise-in-response: opening the bet, or raising it to the next level.
+        // A player cannot raise their own outstanding bet.
         let nextState: TrucoState
         switch gameState.trucoState {
         case .none:
-            nextState = .called(caller: currentPlayerId)
-        case let .accepted(caller):
-            if caller != currentPlayerId {
-                nextState = .retrucoCalled(caller: currentPlayerId)
-            } else {
-                return StateMachineError.invalidMove(move: "callTruco", stateName: "CannotRaiseOwnBet")
-            }
-        case let .retrucoAccepted(caller):
-            if caller != currentPlayerId {
-                nextState = .valeCuatroCalled(caller: currentPlayerId)
-            } else {
-                return StateMachineError.invalidMove(move: "callTruco", stateName: "CannotRaiseOwnBet")
-            }
+            nextState = .trucoCalled
+        case .trucoCalled where gameState.trucoCallerId != currentPlayerId:
+            nextState = .retrucoCalled
+        case .retrucoCalled where gameState.trucoCallerId != currentPlayerId:
+            nextState = .valeCuatroCalled
+        case .trucoCalled, .retrucoCalled:
+            return StateMachineError.invalidMove(move: "callTruco", stateName: "CannotRaiseOwnBet")
         default:
             return StateMachineError.invalidMove(move: "callTruco", stateName: "InvalidTrucoState")
         }
 
-        // Transition Truco state
+        // Transition Truco state (the machine updates trucoState/trucoPoints).
         if let error = stateMachine.trucoMachine.transition(to: nextState, in: gameState) {
             return error
         }
 
-        // Switch turns
+        // Record the caller and pass the turn to the opponent to respond.
+        gameState.trucoCallerId = currentPlayerId
         gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.count
 
         return nil
     }
 
     private func handleAcceptTruco() -> StateMachineError? {
-        // Determine the next Truco state based on current state
-        let nextState: TrucoState
         switch gameState.trucoState {
-        case let .called(caller):
-            nextState = .accepted(caller: caller)
-        case let .retrucoCalled(caller):
-            nextState = .retrucoAccepted(caller: caller)
-        case let .valeCuatroCalled(caller):
-            nextState = .valeCuatroAccepted(caller: caller)
+        case .trucoCalled, .retrucoCalled, .valeCuatroCalled:
+            break
         default:
             return StateMachineError.invalidMove(move: "acceptTruco", stateName: "InvalidTrucoState")
         }
 
-        // Transition to accepted state
-        if let error = stateMachine.trucoMachine.transition(to: nextState, in: gameState) {
+        // Transition to accepted state (stake is preserved).
+        if let error = stateMachine.trucoMachine.transition(to: .accepted, in: gameState) {
             return error
         }
 
-        // Switch turn back to caller
-        if let callerIndex = gameState.players.firstIndex(where: { $0.id == gameState.players[gameState.currentPlayerIndex].id }) {
-            gameState.currentPlayerIndex = (callerIndex + 1) % gameState.players.count
+        // Play resumes with the player who made the last call.
+        if let callerId = gameState.trucoCallerId,
+           let callerIndex = gameState.players.firstIndex(where: { $0.id == callerId })
+        {
+            gameState.currentPlayerIndex = callerIndex
         }
 
         print("Truco accepted!")
@@ -176,30 +168,21 @@ public class TrucoEngineRefactored: TrucoGameEngine {
     }
 
     private func handleRejectTruco() -> StateMachineError? {
-        // Determine the next Truco state based on current state
-        let nextState: TrucoState
         switch gameState.trucoState {
-        case let .called(caller):
-            nextState = .rejected(caller: caller)
-        case let .retrucoCalled(caller):
-            nextState = .rejected(caller: caller)
-        case let .valeCuatroCalled(caller):
-            nextState = .rejected(caller: caller)
+        case .trucoCalled, .retrucoCalled, .valeCuatroCalled:
+            break
         default:
             return StateMachineError.invalidMove(move: "rejectTruco", stateName: "InvalidTrucoState")
         }
 
-        // Transition to rejected state (this will award points to caller)
-        if let error = stateMachine.trucoMachine.transition(to: nextState, in: gameState) {
+        // Transition to rejected state (the machine awards points to the caller).
+        if let error = stateMachine.trucoMachine.transition(to: .rejected, in: gameState) {
             return error
         }
 
-        // Set round winner to caller for immediate round end
-        if case let .rejected(caller) = gameState.trucoState {
-            gameState.roundWinner = caller
-        }
+        // The caller wins the round outright.
+        gameState.roundWinner = gameState.trucoCallerId
 
-        // Transition to round summary
         if let error = stateMachine.gamePhaseMachine.transition(to: .roundSummary, in: gameState) {
             return error
         }
@@ -288,6 +271,15 @@ public class TrucoEngineRefactored: TrucoGameEngine {
             return error
         }
 
+        // The Envido interruption is over; play resumes with the caller. (The
+        // accept path does this via `continueAfterEnvido` after the summary, but
+        // a rejection has no summary, so restore the turn here.)
+        if let callerId = gameState.envidoCallerId,
+           let callerIndex = gameState.players.firstIndex(where: { $0.id == callerId })
+        {
+            gameState.currentPlayerIndex = callerIndex
+        }
+
         checkMatchEnd()
         return nil
     }
@@ -330,29 +322,7 @@ public class TrucoEngineRefactored: TrucoGameEngine {
         return nil
     }
 
-    // MARK: - State Synchronization
-
-    private func synchronizeStateMachines() {
-        // Synchronize game phase machine
-        stateMachine.gamePhaseMachine.reset(to: gameState.gamePhase)
-
-        // Synchronize truco machine
-        stateMachine.trucoMachine.reset()
-        if gameState.trucoState != .none {
-            // Manually set the truco state in the state machine
-            // This is a workaround since we can't directly set the internal state
-            _ = stateMachine.trucoMachine.transition(to: gameState.trucoState, in: gameState)
-        }
-
-        // Synchronize envido machine
-        stateMachine.envidoMachine.reset()
-        if gameState.envidoState != .none {
-            // Manually set the envido state in the state machine
-            _ = stateMachine.envidoMachine.transition(to: gameState.envidoState, in: gameState)
-        }
-    }
-
-    // MARK: - Game Logic Methods (unchanged from original)
+    // MARK: - Game Logic Methods
 
     public func dealInitialCards(player1Id: UUID, player2Id: UUID) {
         var newDeck = GameState.newDeck()
@@ -380,10 +350,16 @@ public class TrucoEngineRefactored: TrucoGameEngine {
         gameState.matchWinner = nil
         gameState.manoPlayerId = player1Id
 
-        // Reset all state machines
-        stateMachine.resetAll()
+        // Reset betting state (authoritative values live on `gameState`).
+        gameState.trucoState = .none
+        gameState.trucoCallerId = nil
+        gameState.trucoPoints = 1
+        gameState.envidoState = .none
+        gameState.envidoCallerId = nil
+        gameState.envidoPoints = 0
 
-        // Transition to playing state
+        // Reset all state machines, then enter the playing phase.
+        stateMachine.resetAll()
         _ = stateMachine.gamePhaseMachine.transition(to: .playing, in: gameState)
     }
 
@@ -446,21 +422,12 @@ public class TrucoEngineRefactored: TrucoGameEngine {
         guard let winnerId = gameState.roundWinner,
               let winnerIndex = gameState.players.firstIndex(where: { $0.id == winnerId }) else { return }
 
-        let points: Int
-        switch gameState.trucoState {
-        case .none:
-            points = 1
-        case let .rejected(caller):
-            points = 1
-        case let .accepted(caller):
-            points = 2
-        case let .retrucoAccepted(caller):
-            points = 3
-        case let .valeCuatroAccepted(caller):
-            points = 4
-        default:
-            points = 0
-        }
+        // A rejected Truco is scored at reject time, not here.
+        guard gameState.trucoState != .rejected else { return }
+
+        // The stake is 1 for an unchallenged hand, otherwise the accepted
+        // Truco value (2 / 3 / 4) carried on `trucoPoints`.
+        let points = gameState.trucoPoints
 
         gameState.players[winnerIndex].score += points
         print("Awarded \(points) to \(gameState.players[winnerIndex].name). New score: \(gameState.players[winnerIndex].score)")
@@ -491,7 +458,13 @@ public class TrucoEngineRefactored: TrucoGameEngine {
         gameState.handOutcomes = []
         gameState.roundWinner = nil
 
-        // Reset state machines
+        // Reset betting state for the new round.
+        gameState.trucoState = .none
+        gameState.trucoCallerId = nil
+        gameState.trucoPoints = 1
+        gameState.envidoState = .none
+        gameState.envidoCallerId = nil
+        gameState.envidoPoints = 0
         stateMachine.trucoMachine.reset()
         stateMachine.envidoMachine.reset()
 
@@ -590,7 +563,7 @@ public class TrucoEngineRefactored: TrucoGameEngine {
 
         // 1. Respond to Truco calls (all levels)
         switch gameState.trucoState {
-        case .called, .retrucoCalled, .valeCuatroCalled:
+        case .trucoCalled, .retrucoCalled, .valeCuatroCalled:
             if Double.random(in: 0 ... 1) < cpuPlayer.acceptBetChance {
                 _ = handleWithError(move: .acceptTruco)
             } else {
